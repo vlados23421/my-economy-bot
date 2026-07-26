@@ -19,7 +19,7 @@ def run_flask():
     app.run(host='0.0.0.0', port=port)
 
 # --- 2. ИНИЦИАЛИЗАЦИЯ БОТА И ДАННЫХ SUPABASE ---
-TOKEN = os.environ.get("8957594048:AAFmdWyLWYxDNjE7tdw1xBfZVYjAK7Qjnhs")
+TOKEN = "8957594048:AAFmdWyLWYxDNjE7tdw1xBfZVYjAK7Qjnhs"
 ADMIN_ID = 8915047087  # !!! ОБЯЗАТЕЛЬНО ЗАМЕНИ НА СВОЙ TELEGRAM ID !!!
 
 bot = telebot.TeleBot(TOKEN)
