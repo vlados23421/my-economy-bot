@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 # --- 1. ИНИЦИАЛИЗАЦИЯ БОТА И ДАННЫХ SUPABASE ---
 # На FPS.ms мы пропишем эти токены прямо в панели управления
-TOKEN = os.environ.get('8957594048:AAFmdWyLWYxDNjE7tdw1xBfZVYjAK7Qjnhs')
+TOKEN = "8957594048:AAFmdWyLWYxDNjE7tdw1xBfZVYjAK7Qjnhs" # Вставьте сюда ваш токен от BotFather)
 ADMIN_ID = 8915047087  # !!! ЗАМЕНИТЕ НА ВАШ REAL TELEGRAM ID !!!
 
 bot = telebot.TeleBot(TOKEN)
