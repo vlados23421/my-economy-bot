@@ -49,36 +49,22 @@ def cmd_start(message):
     user_id = message.from_user.id
     username = message.from_user.username or "Игрок"
 
-    try:
-        # Попытка записать пользователя в базу данных
-        supabase.table("users").upsert({"id": user_id, "username": username}).execute()
-        
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-        btn_support = types.KeyboardButton("🚨 Создать обращение")
-        btn_faq = types.KeyboardButton("ℹ️ Часто задаваемые вопросы")
-        markup.add(btn_support, btn_faq)
+    # Запись пользователя в базу данных Supabase
+    supabase.table("users").upsert({"id": user_id, "username": username}).execute()
+    
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    btn_support = types.KeyboardButton("🚨 Создать обращение")
+    btn_faq = types.KeyboardButton("ℹ️ Часто задаваемые вопросы")
+    markup.add(btn_support, btn_faq)
 
-        welcome_text = (
-            f"🇷🇺 **Добро пожаловать на проект BEST RUSSIA!**\n"
-            f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-            f"Приветствуем тебя, *{username}*! Это official-бот технической поддержки нашего сервера.\n\n"
-            f"🛠 Здесь ты можешь сообщить о баге, подать жалобу или задать вопрос администрации.\n\n"
-            f"👇 Чтобы продолжить, выбери нужное действие на панели кнопками ниже:"
-        )
-        bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
-        
-    except Exception as e:
-        logging.error(f"Ошибка при старте {user_id}: {e}")
-        
-        # Безопасное обрезание ошибки до 200 символов, чтобы Telegram не падал (Message too long)
-        error_msg = str(e)[:200]
-        
-        bot.send_message(
-            message.chat.id, 
-            f"❌ **Техническая ошибка базы данных:**\n\n`{error_msg}...`\n\nПроверьте, что в Supabase создана таблица 'users' с Primary Key 'id'."
-        )
-
-
+    welcome_text = (
+        f"🇷🇺 **Добро пожаловать на проект BEST RUSSIA!**\n"
+        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"Приветствуем тебя, *{username}*! Это официальный бот технической поддержки нашего сервера.\n\n"
+        f"🛠 Здесь ты можешь сообщить о баге, подать жалобу или задать вопрос администрации.\n\n"
+        f"👇 Чтобы продолжить, выбери нужное действие на панели кнопками ниже:"
+    )
+    bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
 # --- ОБРАБОТКА ОСНОВНОГО МЕНЮ ---
 @bot.message_handler(func=lambda message: True)
 def handle_menu(message):
