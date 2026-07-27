@@ -70,8 +70,10 @@ def cmd_start(message):
         bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
     except Exception as e:
         logging.error(f"Ошибка при старте {user_id}: {e}")
-        bot.send_message(message.chat.id, "❌ Произошла техническая ошибка. Пожалуйста, попробуйте позже.")
-
+        bot.send_message(
+            message.chat.id, 
+            f"❌ **Техническая ошибка базы данных:**\n\n`{str(e)}`"
+        )
 
 # --- ОБРАБОТКА ОСНОВНОГО МЕНЮ ---
 @bot.message_handler(func=lambda message: True)
@@ -209,7 +211,5 @@ if __name__ == "__main__":
         logging.info("🚀 Бот BEST RUSSIA успешно запущен и готов к работе...")
         bot.infinity_polling()
         
-    except Exception as e:
-        logging.error(f"Ошибка при старте {user_id}: {e}")
-        # Бот пришлет точный текст ошибки прямо вам в чат
-        bot.send_message(message.chat.id, f"❌ Ошибка базы данных:\n\n`{str(e)}` \n\nПожалуйста, отправьте скриншот этого сообщения.")
+    except Exception as fatal_error:
+        logging.critical(f"💥 КРИТИЧЕСКИЙ СБОЙ ПРИ ЗАПУСКЕ БОТА: {fatal_error}", exc_info=True)
