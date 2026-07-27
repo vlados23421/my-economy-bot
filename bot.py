@@ -1,232 +1,237 @@
 import os
+import logging
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import telebot
-import random
-import requests
-from flask import Flask
-from threading import Thread
-from datetime import datetime, timedelta
 from telebot import types
+from supabase import create_client, Client
 
-# --- 1. ВЕБ-СЕРВЕР ДЛЯ UPTIME НА RENDER ---
-app = Flask('')
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()]
+)
 
-@app.route('/')
-def home():
-    return "Бот активен и работает 24/7!"
+# Загрузка настроек из Render
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID")
 
-def run_flask():
-    port = int(os.environ.get("PORT", 7860))
-    app.run(host='0.0.0.0', port=port)
+if not all([BOT_TOKEN, SUPABASE_URL, SUPABASE_KEY]):
+    logging.critical("Не все переменные окружения заданы на Render!")
+    exit(1)
 
-# --- 2. ИНИЦИАЛИЗАЦИЯ БОТА И ДАННЫХ SUPABASE ---
-TOKEN = "8957594048:AAFmdWyLWYxDNjE7tdw1xBfZVYjAK7Qjnhs"
-ADMIN_ID = 8915047087  # !!! ОБЯЗАТЕЛЬНО ЗАМЕНИ НА СВОЙ TELEGRAM ID !!!
+bot = telebot.TeleBot(BOT_TOKEN)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-bot = telebot.TeleBot(TOKEN)
+# Фоновый веб-сервер для UptimeRobot
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(b"Support Bot is running smoothly!")
+    def log_message(self, format, *args):
+        return
 
-SUPABASE_URL = os.environ.get('SUPABASE_URL')
-SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
-HEADERS = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json",
-    "Prefer": "return=representation"
-}
+def run_web_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    logging.info(f"🌐 Веб-сервер для UptimeRobot запущен на порту {port}")
+    server.serve_forever()
 
-# Временное хранилище для создания промокодов админом
-admin_states = {}
+# --- МЕНЮ И КЛАВИАТУРЫ ---
 
-# --- 3. ФУНКЦИИ РАБОТЫ С БАЗОЙ ДАННЫХ ---
-def get_user(user_id, username):
-    url = f"{SUPABASE_URL}/rest/v1/users?user_id=eq.{user_id}"
-    res = requests.get(url, headers=HEADERS).json()
-    if not res:
-        data = {"user_id": user_id, "username": username or f"id{user_id}", "balance": 500.0, "euros": 0.0, "last_daily": None, "last_mine": None}
-        requests.post(f"{SUPABASE_URL}/rest/v1/users", json=data, headers=HEADERS)
-        return data
-    return res[0] if isinstance(res, list) and res else res
+def get_start_keyboard():
+    """Создает главное меню с кнопками"""
+    keyboard = types.InlineKeyboardMarkup(row_width=1)
+    btn_ticket = types.InlineKeyboardButton(text="🚀 Создать обращение", callback_data="start_ticket")
+    btn_faq = types.InlineKeyboardButton(text="❓ Частые вопросы (FAQ)", callback_data="open_faq")
+    keyboard.add(btn_ticket, btn_faq)
+    return keyboard
 
-def update_user(user_id, updates):
-    url = f"{SUPABASE_URL}/rest/v1/users?user_id=eq.{user_id}"
-    requests.patch(url, json=updates, headers=HEADERS)
+def get_faq_keyboard():
+    """Создает меню часто задаваемых вопросов"""
+    keyboard = types.InlineKeyboardMarkup(row_width=1)
+    btn_faq1 = types.InlineKeyboardButton(text="📥 Как скачать игру?", callback_data="faq_download")
+    btn_faq2 = types.InlineKeyboardButton(text="🔒 Проблемы с донатом", callback_data="faq_donate")
+    btn_back = types.InlineKeyboardButton(text="⬅️ Назад в меню", callback_data="back_to_menu")
+    keyboard.add(btn_faq1, btn_faq2, btn_back)
+    return keyboard
 
-# --- 4. КОМАНДЫ ЭКОНОМИКИ ---
+# --- ОБРАБОТЧИКИ КОМАНД ---
 
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    get_user(message.from_user.id, message.from_user.username)
-    text = (f"👋 Привет, {message.from_user.first_name}!\n"
-            f"🤖 Добро пожаловать в игрового бота экономики.\n\n"
-            f"⛏ /mine — Работать в шахте\n"
-            f"💷 /daily — Получить ежедневный бонус\n"
-            f"📊 /stats — Посмотреть баланс и Евро\n"
-            f"🎟 /promo [код] — Активировать промокод")
-    bot.send_message(message.chat.id, text)
-
-@bot.message_handler(commands=['stats', 'profile', 'профиль', 'статистика'])
-def view_stats(message):
-    user = get_user(message.from_user.id, message.from_user.username)
-    text = (f"📊 *Статистика игрока @{user['username']}:*\n\n"
-            f"💰 *Баланс:* {user['balance']:.2f} руб.\n"
-            f"💶 *Евры:* {user['euros']:.2f} EUR")
-    bot.send_message(message.chat.id, text, parse_mode='Markdown')
-
-@bot.message_handler(commands=['daily', 'бонус'])
-def get_daily(message):
+@bot.message_handler(commands=['start'])
+def cmd_start(message):
     user_id = message.from_user.id
-    user = get_user(user_id, message.from_user.username)
-    now = datetime.now()
-    
-    if user.get('last_daily'):
-        last_daily = datetime.strptime(user['last_daily'], '%Y-%m-%d %H:%M:%S')
-        if now - last_daily < timedelta(days=1):
-            time_left = timedelta(days=1) - (now - last_daily)
-            hours, remainder = divmod(time_left.seconds, 3600)
-            minutes, _ = divmod(remainder, 60)
-            bot.reply_to(message, f"❌ Вы уже брали бонус. Приходите через {hours}ч {minutes}м.")
-            return
+    username = message.from_user.username or "NoUsername"
 
-    reward = random.randint(100, 500)
-    update_user(user_id, {"balance": user['balance'] + reward, "last_daily": now.strftime('%Y-%m-%d %H:%M:%S')})
-    bot.reply_to(message, f"💷 Вы получили ежедневный бонус: *{reward} руб.*!", parse_mode='Markdown')
-
-@bot.message_handler(commands=['mine', 'шахта'])
-def go_mining(message):
-    user_id = message.from_user.id
-    user = get_user(user_id, message.from_user.username)
-    now = datetime.now()
-    
-    if user.get('last_mine'):
-        last_mine = datetime.strptime(user['last_mine'], '%Y-%m-%d %H:%M:%S')
-        if now - last_mine < timedelta(minutes=5):
-            bot.reply_to(message, "⏳ Ваши руки устали. В шахту можно ходить раз в 5 минут!")
-            return
-            
-    mined_money = random.randint(10, 80)
-    mined_euros = round(random.uniform(0.1, 1.5), 2) if random.random() < 0.3 else 0.0
-    
-    update_user(user_id, {"balance": user['balance'] + mined_money, "euros": user['euros'] + mined_euros, "last_mine": now.strftime('%Y-%m-%d %H:%M:%S')})
-    
-    msg = f"⛏ Вы спустились в шахту и добыли:\n💵 Рубли: *+{mined_money} руб.*"
-    if mined_euros > 0:
-        msg += f"\n💶 Евры: *+{mined_euros} EUR*"
-    bot.reply_to(message, msg, parse_mode='Markdown')
-
-# --- 5. ИГРОКИ: АКТИВАЦИЯ ПРОМОКОДА ИЗ ОБЛАКА ---
-@bot.message_handler(commands=['promo', 'промо'])
-def use_promo(message):
-    user_id = message.from_user.id
-    user = get_user(user_id, message.from_user.username)
     try:
-        code = message.text.split()[1]
-    except IndexError:
-        bot.reply_to(message, "Введите промокод: `/promo КОД`", parse_mode='Markdown')
-        return
-
-    # Ищем промокод в базе данных Supabase
-    url = f"{SUPABASE_URL}/rest/v1/promos?code=eq.{code}"
-    res = requests.get(url, headers=HEADERS).json()
-    
-    if not res:
-        bot.reply_to(message, "❌ Такой промокод не найден или устарел.")
-        return
+        supabase.table("users").upsert({"id": user_id, "username": username}).execute()
         
-    promo = res[0]
-    if promo['uses'] <= 0:
-        bot.reply_to(message, "❌ Этот промокод уже закончился!")
-        return
-
-    # Начисляем валюту в зависимости от настроек промокода
-    if promo['currency'] == 'euros':
-        update_user(user_id, {"euros": user['euros'] + promo['reward']})
-        bot.reply_to(message, f"🎉 Промокод активирован! Вам зачислено *+{promo['reward']} EUR*.", parse_mode='Markdown')
-    else:
-        update_user(user_id, {"balance": user['balance'] + promo['reward']})
-        bot.reply_to(message, f"🎉 Промокод активирован! Вам зачислено *+{promo['reward']} руб.*.", parse_mode='Markdown')
-
-    # Уменьшаем количество оставшихся использований на 1
-    requests.patch(f"{SUPABASE_URL}/rest/v1/promos?code=eq.{code}", json={"uses": promo['uses'] - 1}, headers=HEADERS)
-
-# --- 6. АДМИН-ПАНЕЛЬ (ТОЛЬКО ДЛЯ АДМИНИСТРАТОРА) ---
-
-@bot.message_handler(commands=['admin', 'админка'])
-def admin_panel(message):
-    if message.from_user.id != ADMIN_ID:
-        bot.reply_to(message, "❌ Вы не являетесь администратором.")
-        return
+        # Красивое стилизованное приветствие для проекта BEST RUSSIA
+        welcome_text = (
+            "🇷🇺 **ДОБРО ПОЖАЛОВАТЬ В ТЕХПОДДЕРЖКУ BEST RUSSIA!**\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "Приветствуем тебя, боец! Рады видеть тебя на нашем проекте. "
+            "Этот бот создан для того, чтобы оперативно помогать игрокам "
+            "в решении любых технических и игровых проблем.\n\n"
+            "💡 **Чем мы можем помочь?**\n"
+            "• Проблемы со входом или лаунчером\n"
+            "• Ошибки при оплате в магазине доната\n"
+            "• Баги, уязвимости или жалобы\n\n"
+            "⚠️ **Важно:** Пожалуйста, описывайте проблему максимально подробно, "
+            "чтобы администрация смогла помочь вам быстрее.\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "Выберите интересующее вас действие ниже 👇"
+        )
         
-    markup = types.InlineKeyboardMarkup()
-    btn1 = types.InlineKeyboardButton("🎟 Создать промокод", callback_data="create_promo")
-    btn2 = types.InlineKeyboardButton("🎉 Запустить розыгрыш", callback_data="start_giveaway_btn")
-    markup.add(btn1, btn2)
-    
-    bot.send_message(message.chat.id, "🛠 *Добро пожаловать в панель администратора!*", parse_mode='Markdown', reply_markup=markup)
+        bot.send_message(
+            message.chat.id, 
+            welcome_text,
+            parse_mode="Markdown",
+            reply_markup=get_start_keyboard()
+        )
+    except Exception as e:
+        logging.error(f"Ошибка сохранения юзера {user_id}: {e}")
+        bot.send_message(message.chat.id, "❌ Техническая ошибка базы данных. Попробуйте позже.")
+
+# --- ОБРАБОТКА ИНЛАЙН-КНОПОК ---
 
 @bot.callback_query_handler(func=lambda call: True)
-def callback_inline(call):
-    if call.from_user.id != ADMIN_ID:
-        return
-
-    if call.data == "create_promo":
-        bot.send_message(call.message.chat.id, "✍ Введите данные промокода через пробел в формате:\n\n`КОД СУММА ВАЛЮТА(balance/euros) КОЛ-ВО_АКТИВАЦИЙ`\n\n*Пример:* `CRAZY2026 1000 balance 15`", parse_mode='Markdown')
-        admin_states[call.from_user.id] = "waiting_promo"
+def handle_callbacks(call):
+    user_id = call.from_user.id
+    
+    # Кнопка создания тикета
+    if call.data == "start_ticket":
+        bot.delete_message(call.message.chat.id, call.message.message_id) # Удаляем старое меню для чистоты
+        msg = bot.send_message(
+            call.message.chat.id, 
+            "👤 Step 1/2: **Введите ваш точный игровой никнейм на сервере:**",
+            parse_mode="Markdown"
+        )
+        bot.register_next_step_handler(msg, process_nickname)
         bot.answer_callback_query(call.id)
         
-    elif call.data == "start_giveaway_btn":
+    # Кнопка открытия FAQ
+    elif call.data == "open_faq":
+        faq_text = (
+            "❓ **БАЗА ЗНАНИЙ (FAQ) PROJECT BEST RUSSIA**\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "Прежде чем писать техподдержке, ознакомьтесь с частыми вопросами. "
+            "Возможно, здесь уже есть решение вашей проблемы!"
+        )
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text=faq_text,
+            parse_mode="Markdown",
+            reply_markup=get_faq_keyboard()
+        )
         bot.answer_callback_query(call.id)
-        # Имитируем вызов команды розыгрыша
-        class FakeMessage:
-            def __init__(self, chat_id, from_user):
-                self.chat = chat_id
-                self.from_user = from_user
-        start_giveaway(FakeMessage(call.message.chat, call.from_user))
+        
+    # Кнопка возврата в меню
+    elif call.data == "back_to_menu":
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+        cmd_start(call) # Вызываем стартовое приветствие заново
+        bot.answer_callback_query(call.id)
+        
+    # Ответы на конкретные вопросы FAQ
+    elif call.data == "faq_download":
+        bot.send_message(call.message.chat.id, "📥 **Как скачать игру:**\nСкачать наш актуальный лаунчер можно на официальном сайте проекта (ссылка) или в нашей главной группе ВК. Инструкция по установке прикреплена там же.")
+        bot.answer_callback_query(call.id)
+        
+    elif call.data == "faq_donate":
+        bot.send_message(call.message.chat.id, "🔒 **Проблемы с донатом:**\nЕсли средства не поступили на игровой баланс в течение 15 минут, подготовьте чек оплаты (PDF или скриншот) и создайте обращение через кнопку «Создать обращение», выбрав этот пункт.")
+        bot.answer_callback_query(call.id)
+        
+    # Кнопка закрытия тикета администрацией
+    elif call.data.startswith('close_'):
+        ticket_id = call.data.split('_')[1]
+        try:
+            supabase.table("tickets").update({"status": "closed"}).eq("id", ticket_id).execute()
+            bot.edit_message_text(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                text=call.message.text + f"\n\n🔒 **Тикет закрыт администратором @{call.from_user.username}**",
+                reply_markup=None
+            )
+            bot.answer_callback_query(call.id, text="Тикет успешно закрыт!")
+        except Exception as e:
+            logging.error(f"Ошибка закрытия тикета {ticket_id}: {e}")
+            bot.answer_callback_query(call.id, text="Ошибка работы с БД.")
 
-# Обработка ввода параметров промокода от админа
-@bot.message_handler(func=lambda msg: admin_states.get(msg.from_user.id) == "waiting_promo")
-def save_promo_from_admin(message):
-    if message.from_user.id != ADMIN_ID:
+# --- ПОШАГОВЫЙ СБОР ДАННЫХ ДЛЯ ТИКЕТА ---
+
+def process_nickname(message):
+    nickname = message.text
+    user_id = message.from_user.id
+
+    if not nickname or nickname.startswith('/'):
+        msg = bot.send_message(message.chat.id, "⚠️ Никнейм не может быть командой. Введите ваш игровой ник:")
+        bot.register_next_step_handler(msg, process_nickname)
         return
+
+    if len(nickname) > 32:
+        msg = bot.send_message(message.chat.id, "⚠️ Слишком длинный никнейм. Попробуйте еще раз:")
+        bot.register_next_step_handler(msg, process_nickname)
+        return
+
     try:
-        args = message.text.split()
-        code = args[0]
-        reward = float(args[1])
-        currency = args[2]  # 'balance' или 'euros'
-        uses = int(args[3])
-        
-        if currency not in ['balance', 'euros']:
-            bot.reply_to(message, "❌ Ошибка! Валюта должна быть либо `balance`, либо `euros`.")
-            return
+        supabase.table("users").update({"nickname": nickname}).eq("id", user_id).execute()
+        msg = bot.send_message(
+            message.chat.id, 
+            "📝 Step 2/2: **Опишите вашу проблему как можно подробнее.**\n\nЕсли есть скриншоты, загрузите их на фотохостинг (например, Imgur/Yapx) и прикрепите ссылку.",
+            parse_mode="Markdown"
+        )
+        bot.register_next_step_handler(msg, process_issue, nickname)
+    except Exception as e:
+        logging.error(f"Ошибка обновления ника для {user_id}: {e}")
+        bot.send_message(message.chat.id, "❌ Произошла ошибка. Повторите команду /start.")
 
-        # Сохраняем в Supabase
-        data = {"code": code, "reward": reward, "currency": currency, "uses": uses}
-        requests.post(f"{SUPABASE_URL}/rest/v1/promos", json=data, headers=HEADERS)
-        
-        bot.reply_to(message, f"✅ Промокод *{code}* успешно создан на {uses} активаций!", parse_mode='Markdown')
-        admin_states[message.from_user.id] = None
-    except Exception:
-        bot.reply_to(message, "❌ Ошибка ввода! Проверьте формат:\n`КОД СУММА ВАЛЮТА КОЛ-ВО`")
+def process_issue(message, nickname):
+    issue_text = message.text
+    user_id = message.from_user.id
 
-@bot.message_handler(commands=['giveaway', 'розыгрыш'])
-def start_giveaway(message):
-    if message.from_user.id != ADMIN_ID:
+    if not issue_text or issue_text.startswith('/'):
+        msg = bot.send_message(message.chat.id, "⚠️ Опишите проблему обычным текстом:")
+        bot.register_next_step_handler(msg, process_issue, nickname)
         return
-    res = requests.get(f"{SUPABASE_URL}/rest/v1/users", headers=HEADERS).json()
-    if not res:
-        bot.send_message(message.chat.id, "В базе данных еще нет игроков.")
+
+    if len(issue_text) > 1000:
+        msg = bot.send_message(message.chat.id, "⚠️ Описание слишком длинное (макс. 1000 символов). Сократите текст:")
+        bot.register_next_step_handler(msg, process_issue, nickname)
         return
+
+    try:
+        # Сохранение тикета в базу
+        ticket_data = {"user_id": user_id, "text": issue_text, "status": "open"}
+        response = supabase.table("tickets").insert(ticket_data).execute()
         
-    winner = random.choice(res)
-    prize = random.randint(1000, 5000)
-    update_user(winner['user_id'], {"balance": winner['balance'] + prize})
-    bot.send_message(message.chat.id, f"🎉 *ВНИМАНИЕ, РОЗЫГРЫШ!* 🎉\n\nПобедителем становится @{winner['username']}!\nОн получает приз: *{prize} рублей*! 💷", parse_mode='Markdown')
+        ticket_id = "Новый"
+        if response.data:
+            ticket_id = response.data[0].get("id", "Новый") if isinstance(response.data, list) else response.data.get("id", "Новый")
 
-# --- ЗАПУСК ПРОЕКТА ---
-def run_bot():
-    print("Бот Telegram запущен...")
-    bot.infinity_polling()
+        # Ответ пользователю
+        bot.send_message(
+            message.chat.id, 
+            f"✅ **Ваше обращение принято!**\nНомер тикета: `#{ticket_id}`.\n\nАдминистрация BEST RUSSIA свяжется с вами в этом чате. Ожидайте ответа.",
+            parse_mode="Markdown"
+        )
 
-if __name__ == '__main__':
-    bot_thread = Thread(target=run_bot)
-    bot_thread.start()
-    print("Запуск веб-сервера...")
-    run_flask()
+        # Отправка в админ-чат
+        if ADMIN_CHAT_ID:
+            admin_msg = (
+                f"🚨 **Новый тикет #{ticket_id}**\n"
+                f"👤 **Игрок:** {nickname} (ID: `{user_id}`)\n"
+                f" Telegram: @{message.from_user.username or 'отсутствует'}\n\n"
+                f"📋 **Суть проблемы:**\n{issue_text}"
+            )
+            keyboard = types.InlineKeyboardMarkup()
+            keyboard.add(types.InlineKeyboardButton(text="❌ Закрыть тикет", callback_data=f"close_{ticket_id}"))
+            
+            bot.send_message(ADMIN_CHAT_ID, admin_msg, parse_mode="Markdown", reply_markup=keyboard)
+
+    except Exception as e:
