@@ -6,21 +6,19 @@ import telebot
 from telebot import types
 from supabase import create_client, Client
 
-# Настройка логирования
+# Настройка профессионального логирования
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.StreamHandler()]
 )
 
-# --- НАСТРОЙКИ И ПЕРЕМЕННЫЕ (ФИНАЛЬНЫЙ РАБОЧИЙ ВАРИАНТ) ---
+# --- НАСТРОЙКИ И ПЕРЕМЕННЫЕ (БЕЗОПАСНЫЕ) ---
 ADMIN_CHAT_ID = "8915047087"
 SUPABASE_URL = "https://supabase.co"
-
-# Сюда вставьте секретный ключ service_role (начинается на eyJ...)
 SUPABASE_KEY = "sb_secret_XQK6aHhsXhzrbRA2G7QaYQ_Jrrye5bc"
 
-# Сюда вставьте ваш токен из @BotFather
+# Вставьте сюда ваш токен от @BotFather (например: "123456789:ABCdef...")
 BOT_TOKEN = "8957594048:AAFMQMbt2J5eDPxZZ2RBner-OWnMMpDnCG0"
 
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -51,7 +49,7 @@ def cmd_start(message):
     username = message.from_user.username or "Игрок"
 
     try:
-        # Попытка записать пользователя в базу
+        # Попытка записать пользователя в базу данных
         supabase.table("users").upsert({"id": user_id, "username": username}).execute()
         
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
@@ -62,7 +60,7 @@ def cmd_start(message):
         welcome_text = (
             f"🇷🇺 **Добро пожаловать на проект BEST RUSSIA!**\n"
             f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-            f"Приветствуем тебя, *{username}*! Это официальный бот технической поддержки нашего сервера.\n\n"
+            f"Приветствуем тебя, *{username}*! Это official-бот технической поддержки нашего сервера.\n\n"
             f"🛠 Здесь ты можешь сообщить о баге, подать жалобу или задать вопрос администрации.\n\n"
             f"👇 Чтобы продолжить, выбери нужное действие на панели кнопками ниже:"
         )
@@ -70,10 +68,13 @@ def cmd_start(message):
         
     except Exception as e:
         logging.error(f"Ошибка при старте {user_id}: {e}")
-        # Если база данных выдаст ошибку, бот пришлет её точный текст прямо в чат!
+        
+        # Безопасное обрезание ошибки до 200 символов, чтобы Telegram не падал (Message too long)
+        error_msg = str(e)[:200]
+        
         bot.send_message(
             message.chat.id, 
-            f"❌ **Техническая ошибка базы данных:**\n\n`{str(e)}`"
+            f"❌ **Техническая ошибка базы данных:**\n\n`{error_msg}...`\n\nПроверьте, что в Supabase создана таблица 'users' с Primary Key 'id'."
         )
 
 
@@ -127,7 +128,8 @@ def process_nickname(message):
         bot.register_next_step_handler(msg, process_issue, nickname)
     except Exception as e:
         logging.error(f"Ошибка сохранения ника {user_id}: {e}")
-        return_to_menu(message, f"❌ Ошибка изменения ника:\n`{str(e)}`")
+        error_msg = str(e)[:200]
+        return_to_menu(message, f"❌ Ошибка изменения никнейма:\n`{error_msg}`")
 
 
 def process_issue(message, nickname):
@@ -168,7 +170,8 @@ def process_issue(message, nickname):
 
     except Exception as e:
         logging.error(f"Ошибка отправки тикета {user_id}: {e}")
-        return_to_menu(message, f"❌ Ошибка отправки тикета:\n`{str(e)}`")
+        error_msg = str(e)[:200]
+        return_to_menu(message, f"❌ Ошибка отправки тикета:\n`{error_msg}`")
 
 
 def return_to_menu(message, text):
@@ -199,5 +202,5 @@ def handle_close_ticket(call):
 if __name__ == "__main__":
     web_thread = threading.Thread(target=run_web_server, daemon=True)
     web_thread.start()
-    logging.info("🚀 Бот BEST RUSSIA запущен...")
+    logging.info("🚀 Бот BEST RUSSIA успешно запущен и ожидает запросов...")
     bot.infinity_polling()
