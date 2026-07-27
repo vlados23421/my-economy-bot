@@ -44,7 +44,7 @@ def run_web_server():
 
 
 # --- КОМАНДА /START И ГЛАВНОЕ МЕНЮ ---
-@bot.message_handler(commands=['start'])
+@bot.message_handler(commands=['best'])
 def cmd_start(message):
     user_id = message.from_user.id
     username = message.from_user.username or "Игрок"
