@@ -13,15 +13,13 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-# Загрузка настроек из Render
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
-ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID")
+# --- НАСТРОЙКИ И ПЕРЕМЕННЫЕ (БЕЗ ОШИБОК) ---
+ADMIN_CHAT_ID = "8915047087"
+SUPABASE_URL = "https://supabase.co"
+SUPABASE_KEY = "sb_publishable_8WXX1OgOJ7Vn92CWFI5MXQ_dLxjfNa3"
 
-if not all([BOT_TOKEN, SUPABASE_URL, SUPABASE_KEY]):
-    logging.critical("Не все переменные окружения заданы на Render!")
-    exit(1)
+# Токен вашего бота из BotFather. Замените текст ниже на ваш реальный токен (например: "123456:ABC..."):
+BOT_TOKEN = "8957594048:AAFMQMbt2J5eDPxZZ2RBner-OWnMMpDnCG0"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
