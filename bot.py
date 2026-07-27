@@ -1,29 +1,25 @@
-# Финальная сборка техподдержки Best Russia
 import os
 import logging
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import telebot
 from telebot import types
-from supabase import create_client, Client
 
-# Настройка профессионального логирования
+# Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.StreamHandler()]
 )
 
-# --- НАСТРОЙКИ И ПЕРЕМЕННЫЕ (БЕЗОПАСНЫЕ) ---
+# --- НАСТРОЙКИ ---
+# Ваш ID админа. Бот будет пересылать все тикеты напрямую вам
 ADMIN_CHAT_ID = "8915047087"
-SUPABASE_URL = "https://supabase.co"
-SUPABASE_KEY = "sb_secret_XQK6aHhsXhzrbRA2G7QaYQ_Jrrye5bc"
 
-# Вставьте сюда ваш токен от @BotFather (например: "123456789:ABCdef...")
+# Вставьте сюда ваш токен от @BotFather
 BOT_TOKEN = "8957594048:AAHKkvlMHKVEQcZ0awDDWtpD6F37LGrp9lE"
 
 bot = telebot.TeleBot(BOT_TOKEN)
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 # --- ВЕБ-СЕРВЕР ДЛЯ UPTIMEROBOT ---
@@ -44,13 +40,9 @@ def run_web_server():
 
 
 # --- КОМАНДА /START И ГЛАВНОЕ МЕНЮ ---
-@bot.message_handler(commands=['best'])
+@bot.message_handler(commands=['start'])
 def cmd_start(message):
-    user_id = message.from_user.id
     username = message.from_user.username or "Игрок"
-
-    # Запись пользователя в базу данных Supabase
-    supabase.table("users").upsert({"id": user_id, "username": username}).execute()
     
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
     btn_support = types.KeyboardButton("🚨 Создать обращение")
@@ -65,6 +57,8 @@ def cmd_start(message):
         f"👇 Чтобы продолжить, выбери нужное действие на панели кнопками ниже:"
     )
     bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
+
+
 # --- ОБРАБОТКА ОСНОВНОГО МЕНЮ ---
 @bot.message_handler(func=lambda message: True)
 def handle_menu(message):
@@ -93,30 +87,22 @@ def handle_menu(message):
         bot.send_message(message.chat.id, "⚠️ Используйте кнопки в меню для управления ботом.")
 
 
-# --- СБОР ДАННЫХ ТИКЕТА ---
+# --- СБОР ДАННЫХ ТИКЕТА БЕЗ БД ---
 def process_nickname(message):
     nickname = message.text
-    user_id = message.from_user.id
 
     if not nickname or nickname.startswith('/'):
         msg = bot.send_message(message.chat.id, "⚠️ Никнейм не может быть системной командой. Введите игровой ник:")
         bot.register_next_step_handler(msg, process_nickname)
         return
 
-    try:
-        supabase.table("users").update({"nickname": nickname}).eq("id", user_id).execute()
-        
-        msg = bot.send_message(
-            message.chat.id, 
-            "📝 **Шаг 2 из 2:** Опишите вашу проблему как можно подробнее.\n\n"
-            "💡 _Если у вас есть скриншот или видео, залейте его на фотохостинг и вставьте ссылку в текст сообщения._",
-            parse_mode="Markdown"
-        )
-        bot.register_next_step_handler(msg, process_issue, nickname)
-    except Exception as e:
-        logging.error(f"Ошибка сохранения ника {user_id}: {e}")
-        error_msg = str(e)[:200]
-        return_to_menu(message, f"❌ Ошибка изменения никнейма:\n`{error_msg}`")
+    msg = bot.send_message(
+        message.chat.id, 
+        "📝 **Шаг 2 из 2:** Опишите вашу проблему как можно подробнее.\n\n"
+        "💡 _Если у вас есть скриншот или видео, залейте его на фотохостинг и вставьте ссылку в текст сообщения._",
+        parse_mode="Markdown"
+    )
+    bot.register_next_step_handler(msg, process_issue, nickname)
 
 
 def process_issue(message, nickname):
@@ -128,37 +114,25 @@ def process_issue(message, nickname):
         bot.register_next_step_handler(msg, process_issue, nickname)
         return
 
-    try:
-        ticket_data = {"user_id": user_id, "text": issue_text, "status": "open"}
-        response = supabase.table("tickets").insert(ticket_data).execute()
-        ticket_id = response.data.get("id") if response.data else "Новый"
+    # 1. Уведомление игрока
+    success_text = (
+        f"✅ **Ваше обращение успешно отправлено!**\n"
+        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"Администрация BEST RUSSIA уже получила уведомление и скоро свяжется с вами. Ожидайте."
+    )
+    return_to_menu(message, success_text)
 
-        success_text = (
-            f"✅ **Ваше обращение принято!**\n"
-            f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-            f"• **Номер тикета:** `#{ticket_id}`\n"
-            f"• **Статус:** В очереди на рассмотрение\n\n"
-            f"Администрация BEST RUSSIA уже получила уведомление и ответит вам прямо в этом чате. Ожидайте."
-        )
-        return_to_menu(message, success_text)
-
-        if ADMIN_CHAT_ID:
-            admin_msg = (
-                f"🚨 **НОВЫЙ ТИКЕТ #{ticket_id}**\n"
-                f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-                f"👤 **Игрок:** `{nickname}`\n"
-                f"🆔 **Telegram ID:** `{user_id}`\n"
-                f"📱 **Профиль:** @{message.from_user.username or 'скрыт'}\n\n"
-                f"📋 **Суть проблемы:**\n_{issue_text}_"
-            )
-            keyboard = types.InlineKeyboardMarkup()
-            keyboard.add(types.InlineKeyboardButton(text="❌ Закрыть тикет", callback_data=f"close_{ticket_id}"))
-            bot.send_message(ADMIN_CHAT_ID, admin_msg, parse_mode="Markdown", reply_markup=keyboard)
-
-    except Exception as e:
-        logging.error(f"Ошибка отправки тикета {user_id}: {e}")
-        error_msg = str(e)[:200]
-        return_to_menu(message, f"❌ Ошибка отправки тикета:\n`{error_msg}`")
+    # 2. Мгновенная пересылка админу (вам в ЛС) напрямую в Telegram
+    admin_msg = (
+        f"🚨 **НОВЫЙ ТИКЕТ ПОДДЕРЖКИ**\n"
+        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"👤 **Игрок:** `{nickname}`\n"
+        f"🆔 **Telegram ID:** `{user_id}`\n"
+        f"📱 **Профиль:** @{message.from_user.username or 'скрыт'}\n\n"
+        f"📋 **Суть проблемы:**\n_{issue_text}_"
+    )
+    
+    bot.send_message(ADMIN_CHAT_ID, admin_msg, parse_mode="Markdown")
 
 
 def return_to_menu(message, text):
@@ -167,27 +141,9 @@ def return_to_menu(message, text):
     bot.send_message(message.chat.id, text, parse_mode="Markdown", reply_markup=markup)
 
 
-# --- КНОПКА ЗАКРЫТИЯ ДЛЯ АДМИНА ---
-@bot.callback_query_handler(func=lambda call: call.data.startswith('close_'))
-def handle_close_ticket(call):
-    ticket_id = call.data.split('_')
-    try:
-        supabase.table("tickets").update({"status": "closed"}).eq("id", ticket_id).execute()
-        bot.edit_message_text(
-            chat_id=call.message.chat.id,
-            message_id=call.message.message_id,
-            text=call.message.text + f"\n\n🔒 **Тикет успешно закрыт и архивирован.**",
-            reply_markup=None
-        )
-        bot.answer_callback_query(call.id, text="Тикет закрыт!")
-    except Exception as e:
-        logging.error(f"Ошибка закрытия тикета {ticket_id}: {e}")
-        bot.answer_callback_query(call.id, text="Ошибка базы данных.")
-
-
 # --- ЗАПУСК ПОТОКОВ ---
 if __name__ == "__main__":
     web_thread = threading.Thread(target=run_web_server, daemon=True)
     web_thread.start()
-    logging.info("🚀 Бот BEST RUSSIA успешно запущен и ожидает запросов...")
+    logging.info("🚀 Бот BEST RUSSIA успешно запущен без базы данных...")
     bot.infinity_polling()
