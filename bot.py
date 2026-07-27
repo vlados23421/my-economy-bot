@@ -234,4 +234,8 @@ def process_issue(message, nickname):
             
             bot.send_message(ADMIN_CHAT_ID, admin_msg, parse_mode="Markdown", reply_markup=keyboard)
 
+ 
     except Exception as e:
+        logging.error(f"Ошибка: {e}")
+        bot.answer_callback_query(call.id, text="Ошибка базы данных.")
+
