@@ -13,10 +13,7 @@ logging.basicConfig(
 )
 
 # --- НАСТРОЙКИ ---
-# Ваш ID админа. Бот будет пересылать все тикеты напрямую вам
 ADMIN_CHAT_ID = "8915047087"
-
-# Вставьте сюда ваш токен от @BotFather
 BOT_TOKEN = "8957594048:AAHKkvlMHKVEQcZ0awDDWtpD6F37LGrp9lE"
 
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -59,13 +56,13 @@ def cmd_start(message):
     bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
 
 
-# --- ОБРАБОТКА ОСНОВНОГО МЕНЮ ---
-@bot.message_handler(func=lambda message: True)
+# --- ОБРАБОТКА МЕНЮ ДЛЯ ИГРОКОВ ---
+@bot.message_handler(func=lambda message: message.chat.id != int(ADMIN_CHAT_ID) and message.text in ["🚨 Создать обращение", "ℹ️ Часто задаваемые вопросы"])
 def handle_menu(message):
     if message.text == "🚨 Создать обращение":
         msg = bot.send_message(
             message.chat.id, 
-            "👤 **Шаг 1 из 2:** Введите ваш точный игровой никнейм (например, `Ivan_Ivanov`):",
+            "👤 **Шаг 1 из 3:** Введите ваш точный игровой никнейм (например, `Ivan_Ivanov`):",
             parse_mode="Markdown",
             reply_markup=types.ReplyKeyboardRemove()
         )
@@ -83,11 +80,9 @@ def handle_menu(message):
             "➡️ Если платеж не пришел в течение часа, создайте обращение через этот бот, прикрепив чек."
         )
         bot.send_message(message.chat.id, faq_text, parse_mode="Markdown")
-    else:
-        bot.send_message(message.chat.id, "⚠️ Используйте кнопки в меню для управления ботом.")
 
 
-# --- СБОР ДАННЫХ ТИКЕТА БЕЗ БД ---
+# --- СБОР ДАННЫХ: НИКНЕЙМ ---
 def process_nickname(message):
     nickname = message.text
 
@@ -96,40 +91,79 @@ def process_nickname(message):
         bot.register_next_step_handler(msg, process_nickname)
         return
 
-    msg = bot.send_message(
+    # Создаем инлайн-кнопки для выбора категории проблемы
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    btn_bug = types.InlineKeyboardButton("🐛 Нашел баг / ошибку", callback_data=f"cat:баг:{nickname}")
+    btn_report = types.InlineKeyboardButton("🦅 Жалоба на игрока/админа", callback_data=f"cat:жалоба:{nickname}")
+    btn_donat = types.InlineKeyboardButton("💳 Проблема с донатом", callback_data=f"cat:донат:{nickname}")
+    btn_other = types.InlineKeyboardButton("❓ Другой вопрос", callback_data=f"cat:другое:{nickname}")
+    
+    keyboard.add(btn_bug, btn_report, btn_donat, btn_other)
+
+    bot.send_message(
         message.chat.id, 
-        "📝 **Шаг 2 из 2:** Опишите вашу проблему как можно подробнее.\n\n"
-        "💡 _Если у вас есть скриншот или видео, залейте его на фотохостинг и вставьте ссылку в текст сообщения._",
+        f"📋 **Шаг 2 из 3:** Отлично, `{nickname}`. Теперь выберите категорию вашего обращения ниже:",
+        parse_mode="Markdown",
+        reply_markup=keyboard
+    )
+
+
+# --- ОБРАБОТКА ВЫБОРА КАТЕГОРИИ ---
+@bot.callback_query_handler(func=lambda call: call.data.startswith('cat:'))
+def handle_category_choice(call):
+    # Разделяем по двоеточию, чтобы избежать багов с нижним подчёркиванием в никнеймах
+    data_parts = call.data.split(':', 2)
+    category = data_parts[1]
+    nickname = data_parts[2]
+
+    # Убираем инлайн-кнопки у старого сообщения
+    bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
+
+    # Присваиваем красивый статус-смайлик для админа
+    cat_emoji = "❓"
+    if category == "баг": cat_emoji = "🐛 [БАГ / ОШИБКА]"
+    elif category == "жалоба": cat_emoji = "🦅 [ЖАЛОБА]"
+    elif category == "донат": cat_emoji = "💳 [ДОНАТ]"
+    elif category == "другое": cat_emoji = "💬 [ОБЩИЙ ВОПРОС]"
+
+    msg = bot.send_message(
+        call.message.chat.id, 
+        f"📝 **Шаг 3 из 3:** Вы выбрали категорию: *{cat_emoji}*.\n\n"
+        f"Теперь подробно опишите вашу проблему текстом. Если есть скриншоты, укажите ссылку на них.",
         parse_mode="Markdown"
     )
-    bot.register_next_step_handler(msg, process_issue, nickname)
+    # Передаем в следующий шаг никнейм и выбранную категорию
+    bot.register_next_step_handler(msg, process_issue, nickname, cat_emoji)
+    bot.answer_callback_query(call.id)
 
 
-def process_issue(message, nickname):
+# --- СБОР ДАННЫХ: СУТЬ ПРОБЛЕМЫ И ОТПРАВКА ---
+def process_issue(message, nickname, category_title):
     issue_text = message.text
     user_id = message.from_user.id
 
     if not issue_text or issue_text.startswith('/'):
         msg = bot.send_message(message.chat.id, "⚠️ Опишите проблему обычным текстом:")
-        bot.register_next_step_handler(msg, process_issue, nickname)
+        bot.register_next_step_handler(msg, process_issue, nickname, category_title)
         return
 
-    # 1. Уведомление игрока
     success_text = (
         f"✅ **Ваше обращение успешно отправлено!**\n"
         f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"Категория: *{category_title}*\n\n"
         f"Администрация BEST RUSSIA уже получила уведомление и скоро свяжется с вами. Ожидайте."
     )
     return_to_menu(message, success_text)
 
-    # 2. Мгновенная пересылка админу (вам в ЛС) напрямую в Telegram
+    # Отправляем оформленный тикет вам (админу) с указанием категории
     admin_msg = (
         f"🚨 **НОВЫЙ ТИКЕТ ПОДДЕРЖКИ**\n"
+        f"📁 **Категория:** {category_title}\n"
         f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
         f"👤 **Игрок:** `{nickname}`\n"
-        f"🆔 **Telegram ID:** `{user_id}`\n"
         f"📱 **Профиль:** @{message.from_user.username or 'скрыт'}\n\n"
-        f"📋 **Суть проблемы:**\n_{issue_text}_"
+        f"📋 **Суть проблемы:**\n_{issue_text}_\n\n"
+        f"⚙️ `id_user:{user_id}`"
     )
     
     bot.send_message(ADMIN_CHAT_ID, admin_msg, parse_mode="Markdown")
@@ -141,9 +175,33 @@ def return_to_menu(message, text):
     bot.send_message(message.chat.id, text, parse_mode="Markdown", reply_markup=markup)
 
 
+# --- ФУНКЦИЯ ОТВЕТА ИГРОКУ ОТ АДМИНА ЧЕРЕЗ REPLY ---
+@bot.message_handler(func=lambda message: message.chat.id == int(ADMIN_CHAT_ID) and message.reply_to_message is not None)
+def handle_admin_reply(message):
+    try:
+        reply_text = message.reply_to_message.text
+        
+        if "⚙️ id_user:" in reply_text:
+            target_user_id = reply_text.split("⚙️ id_user:")[-1].strip()
+            admin_answer = message.text
+            
+            user_msg = (
+                f"✉️ **Ответ от администрации BEST RUSSIA:**\n"
+                f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+                f"{admin_answer}"
+            )
+            
+            bot.send_message(target_user_id, user_msg, parse_mode="Markdown")
+            bot.send_message(ADMIN_CHAT_ID, f"✅ Ответ успешно доставлен игроку (ID: `{target_user_id}`)!")
+            
+    except Exception as e:
+        logging.error(f"Ошибка при пересылке ответа админа: {e}")
+        bot.send_message(ADMIN_CHAT_ID, f"❌ Не удалось доставить ответ. Ошибка: {e}")
+
+
 # --- ЗАПУСК ПОТОКОВ ---
 if __name__ == "__main__":
     web_thread = threading.Thread(target=run_web_server, daemon=True)
     web_thread.start()
-    logging.info("🚀 Бот BEST RUSSIA успешно запущен без базы данных...")
+    logging.info("🚀 Прокачанный бот BEST RUSSIA успешно запущен...")
     bot.infinity_polling()
