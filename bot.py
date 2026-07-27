@@ -6,188 +6,126 @@ import telebot
 from telebot import types
 from supabase import create_client, Client
 
-# Настройка логирования
+# Настройка логирования для вывода ошибок в панель Render
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.StreamHandler()]
 )
 
-# --- НАСТРОЙКИ И ПЕРЕМЕННЫЕ (БЕЗ ОШИБОК) ---
+# --- НАСТРОЙКИ И ПЕРЕМЕННЫЕ (ЖЕСТКО В КОДЕ) ---
 ADMIN_CHAT_ID = "8915047087"
 SUPABASE_URL = "https://supabase.co"
 SUPABASE_KEY = "sb_publishable_8WXX1OgOJ7Vn92CWFI5MXQ_dLxjfNa3"
 
-# Токен вашего бота из BotFather. Замените текст ниже на ваш реальный токен (например: "123456:ABC..."):
+# Вставьте сюда ваш токен от @BotFather (например: "123456789:ABCdef...")
 BOT_TOKEN = "8957594048:AAFMQMbt2J5eDPxZZ2RBner-OWnMMpDnCG0"
+
+# Валидация токена перед инициализацией
+if not BOT_TOKEN or "BOTFATHER" in BOT_TOKEN:
+    logging.critical("💥 КРИТИЧЕСКАЯ ОШИБКА: Вы забили заменить заглушку на реальный токен от BotFather!")
+    exit(1)
 
 bot = telebot.TeleBot(BOT_TOKEN)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Фоновый веб-сервер для UptimeRobot
+
+# --- ВЕБ-СЕРВЕР ДЛЯ UPTIMEROBOT ---
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.send_header("Content-type", "text/plain; charset=utf-8")
         self.end_headers()
-        self.wfile.write(b"Support Bot is running smoothly!")
+        self.wfile.write(b"BEST RUSSIA Support is active!")
     def log_message(self, format, *args):
         return
 
 def run_web_server():
     port = int(os.environ.get("PORT", 10000))
     server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
-    logging.info(f"🌐 Веб-сервер для UptimeRobot запущен на порту {port}")
+    logging.info(f"🌐 Сервер UptimeRobot запущен на порту {port}")
     server.serve_forever()
 
-# --- МЕНЮ И КЛАВИАТУРЫ ---
 
-def get_start_keyboard():
-    """Создает главное меню с кнопками"""
-    keyboard = types.InlineKeyboardMarkup(row_width=1)
-    btn_ticket = types.InlineKeyboardButton(text="🚀 Создать обращение", callback_data="start_ticket")
-    btn_faq = types.InlineKeyboardButton(text="❓ Частые вопросы (FAQ)", callback_data="open_faq")
-    keyboard.add(btn_ticket, btn_faq)
-    return keyboard
-
-def get_faq_keyboard():
-    """Создает меню часто задаваемых вопросов"""
-    keyboard = types.InlineKeyboardMarkup(row_width=1)
-    btn_faq1 = types.InlineKeyboardButton(text="📥 Как скачать игру?", callback_data="faq_download")
-    btn_faq2 = types.InlineKeyboardButton(text="🔒 Проблемы с донатом", callback_data="faq_donate")
-    btn_back = types.InlineKeyboardButton(text="⬅️ Назад в меню", callback_data="back_to_menu")
-    keyboard.add(btn_faq1, btn_faq2, btn_back)
-    return keyboard
-
-# --- ОБРАБОТЧИКИ КОМАНД ---
-
+# --- КОМАНДА /START И ГЛАВНОЕ МЕНЮ ---
 @bot.message_handler(commands=['start'])
 def cmd_start(message):
     user_id = message.from_user.id
-    username = message.from_user.username or "NoUsername"
+    username = message.from_user.username or "Игрок"
 
     try:
         supabase.table("users").upsert({"id": user_id, "username": username}).execute()
         
-        # Красивое стилизованное приветствие для проекта BEST RUSSIA
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+        btn_support = types.KeyboardButton("🚨 Создать обращение")
+        btn_faq = types.KeyboardButton("ℹ️ Часто задаваемые вопросы")
+        markup.add(btn_support, btn_faq)
+
         welcome_text = (
-            "🇷🇺 **ДОБРО ПОЖАЛОВАТЬ В ТЕХПОДДЕРЖКУ BEST RUSSIA!**\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            "Приветствуем тебя, боец! Рады видеть тебя на нашем проекте. "
-            "Этот бот создан для того, чтобы оперативно помогать игрокам "
-            "в решении любых технических и игровых проблем.\n\n"
-            "💡 **Чем мы можем помочь?**\n"
-            "• Проблемы со входом или лаунчером\n"
-            "• Ошибки при оплате в магазине доната\n"
-            "• Баги, уязвимости или жалобы\n\n"
-            "⚠️ **Важно:** Пожалуйста, описывайте проблему максимально подробно, "
-            "чтобы администрация смогла помочь вам быстрее.\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            "Выберите интересующее вас действие ниже 👇"
+            f"🇷🇺 **Добро пожаловать на проект BEST RUSSIA!**\n"
+            f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            f"Приветствуем тебя, *{username}*! Это официальный бот технической поддержки нашего сервера.\n\n"
+            f"🛠 Здесь ты можешь сообщить о баге, подать жалобу или задать вопрос администрации.\n\n"
+            f"👇 Чтобы продолжить, выбери нужное действие на панели кнопками ниже:"
         )
-        
-        bot.send_message(
-            message.chat.id, 
-            welcome_text,
-            parse_mode="Markdown",
-            reply_markup=get_start_keyboard()
-        )
+        bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=markup)
     except Exception as e:
-        logging.error(f"Ошибка сохранения юзера {user_id}: {e}")
-        bot.send_message(message.chat.id, "❌ Техническая ошибка базы данных. Попробуйте позже.")
+        logging.error(f"Ошибка при старте {user_id}: {e}")
+        bot.send_message(message.chat.id, "❌ Произошла техническая ошибка. Пожалуйста, попробуйте позже.")
 
-# --- ОБРАБОТКА ИНЛАЙН-КНОПОК ---
 
-@bot.callback_query_handler(func=lambda call: True)
-def handle_callbacks(call):
-    user_id = call.from_user.id
-    
-    # Кнопка создания тикета
-    if call.data == "start_ticket":
-        bot.delete_message(call.message.chat.id, call.message.message_id) # Удаляем старое меню для чистоты
+# --- ОБРАБОТКА ОСНОВНОГО МЕНЮ ---
+@bot.message_handler(func=lambda message: True)
+def handle_menu(message):
+    if message.text == "🚨 Создать обращение":
         msg = bot.send_message(
-            call.message.chat.id, 
-            "👤 Step 1/2: **Введите ваш точный игровой никнейм на сервере:**",
-            parse_mode="Markdown"
+            message.chat.id, 
+            "👤 **Шаг 1 из 2:** Введите ваш точный игровой никнейм (например, `Ivan_Ivanov`):",
+            parse_mode="Markdown",
+            reply_markup=types.ReplyKeyboardRemove()
         )
         bot.register_next_step_handler(msg, process_nickname)
-        bot.answer_callback_query(call.id)
         
-    # Кнопка открытия FAQ
-    elif call.data == "open_faq":
+    elif message.text == "ℹ️ Часто задаваемые вопросы":
         faq_text = (
-            "❓ **БАЗА ЗНАНИЙ (FAQ) PROJECT BEST RUSSIA**\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            "Прежде чем писать техподдержке, ознакомьтесь с частыми вопросами. "
-            "Возможно, здесь уже есть решение вашей проблемы!"
+            "📌 **Популярные вопросы и ответы:**\n"
+            "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            "❓ **Как начать играть?**\n"
+            "➡️ Скачайте наш лаунчер по официальной ссылке в нашей группе VK.\n\n"
+            "❓ **Я застрял или провалился под текстуры?**\n"
+            "➡️ Напишите в игре команду `/report` в репорт сервера, свободный администратор сразу вам поможет.\n\n"
+            "❓ **Проблемы с донатом?**\n"
+            "➡️ Если платеж не пришел в течение часа, создайте обращение через этот бот, прикрепив чек."
         )
-        bot.edit_message_text(
-            chat_id=call.message.chat.id,
-            message_id=call.message.message_id,
-            text=faq_text,
-            parse_mode="Markdown",
-            reply_markup=get_faq_keyboard()
-        )
-        bot.answer_callback_query(call.id)
-        
-    # Кнопка возврата в меню
-    elif call.data == "back_to_menu":
-        bot.delete_message(call.message.chat.id, call.message.message_id)
-        cmd_start(call) # Вызываем стартовое приветствие заново
-        bot.answer_callback_query(call.id)
-        
-    # Ответы на конкретные вопросы FAQ
-    elif call.data == "faq_download":
-        bot.send_message(call.message.chat.id, "📥 **Как скачать игру:**\nСкачать наш актуальный лаунчер можно на официальном сайте проекта (ссылка) или в нашей главной группе ВК. Инструкция по установке прикреплена там же.")
-        bot.answer_callback_query(call.id)
-        
-    elif call.data == "faq_donate":
-        bot.send_message(call.message.chat.id, "🔒 **Проблемы с донатом:**\nЕсли средства не поступили на игровой баланс в течение 15 минут, подготовьте чек оплаты (PDF или скриншот) и создайте обращение через кнопку «Создать обращение», выбрав этот пункт.")
-        bot.answer_callback_query(call.id)
-        
-    # Кнопка закрытия тикета администрацией
-    elif call.data.startswith('close_'):
-        ticket_id = call.data.split('_')[1]
-        try:
-            supabase.table("tickets").update({"status": "closed"}).eq("id", ticket_id).execute()
-            bot.edit_message_text(
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                text=call.message.text + f"\n\n🔒 **Тикет закрыт администратором @{call.from_user.username}**",
-                reply_markup=None
-            )
-            bot.answer_callback_query(call.id, text="Тикет успешно закрыт!")
-        except Exception as e:
-            logging.error(f"Ошибка закрытия тикета {ticket_id}: {e}")
-            bot.answer_callback_query(call.id, text="Ошибка работы с БД.")
+        bot.send_message(message.chat.id, faq_text, parse_mode="Markdown")
+    else:
+        bot.send_message(message.chat.id, "⚠️ Используйте кнопки в меню для управления ботом.")
 
-# --- ПОШАГОВЫЙ СБОР ДАННЫХ ДЛЯ ТИКЕТА ---
 
+# --- СБОР ДАННЫХ ТИКЕТА ---
 def process_nickname(message):
     nickname = message.text
     user_id = message.from_user.id
 
     if not nickname or nickname.startswith('/'):
-        msg = bot.send_message(message.chat.id, "⚠️ Никнейм не может быть командой. Введите ваш игровой ник:")
-        bot.register_next_step_handler(msg, process_nickname)
-        return
-
-    if len(nickname) > 32:
-        msg = bot.send_message(message.chat.id, "⚠️ Слишком длинный никнейм. Попробуйте еще раз:")
+        msg = bot.send_message(message.chat.id, "⚠️ Никнейм не может быть системной командой. Введите игровой ник:")
         bot.register_next_step_handler(msg, process_nickname)
         return
 
     try:
         supabase.table("users").update({"nickname": nickname}).eq("id", user_id).execute()
+        
         msg = bot.send_message(
             message.chat.id, 
-            "📝 Step 2/2: **Опишите вашу проблему как можно подробнее.**\n\nЕсли есть скриншоты, загрузите их на фотохостинг (например, Imgur/Yapx) и прикрепите ссылку.",
+            "📝 **Шаг 2 из 2:** Опишите вашу проблему как можно подробнее.\n\n"
+            "💡 _Если у вас есть скриншот или видео, залейте его на фотохостинг и вставьте ссылку в текст сообщения._",
             parse_mode="Markdown"
         )
         bot.register_next_step_handler(msg, process_issue, nickname)
     except Exception as e:
-        logging.error(f"Ошибка обновления ника для {user_id}: {e}")
-        bot.send_message(message.chat.id, "❌ Произошла ошибка. Повторите команду /start.")
+        logging.error(f"Ошибка сохранения ника {user_id}: {e}")
+        return_to_menu(message, "❌ Ошибка сохранения данных. Возвращаем в меню.")
+
 
 def process_issue(message, nickname):
     issue_text = message.text
@@ -198,42 +136,79 @@ def process_issue(message, nickname):
         bot.register_next_step_handler(msg, process_issue, nickname)
         return
 
-    if len(issue_text) > 1000:
-        msg = bot.send_message(message.chat.id, "⚠️ Описание слишком длинное (макс. 1000 символов). Сократите текст:")
-        bot.register_next_step_handler(msg, process_issue, nickname)
-        return
-
     try:
-        # Сохранение тикета в базу
+        # 1. Сохранение в Supabase
         ticket_data = {"user_id": user_id, "text": issue_text, "status": "open"}
         response = supabase.table("tickets").insert(ticket_data).execute()
         
-        ticket_id = "Новый"
-        if response.data:
-            ticket_id = response.data[0].get("id", "Новый") if isinstance(response.data, list) else response.data.get("id", "Новый")
+        ticket_id = response.data[0].get("id") if response.data else "Новый"
 
-        # Ответ пользователю
-        bot.send_message(
-            message.chat.id, 
-            f"✅ **Ваше обращение принято!**\nНомер тикета: `#{ticket_id}`.\n\nАдминистрация BEST RUSSIA свяжется с вами в этом чате. Ожидайте ответа.",
-            parse_mode="Markdown"
+        # 2. Уведомление игрока
+        success_text = (
+            f"✅ **Ваше обращение принято!**\n"
+            f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            f"• **Номер тикета:** `#{ticket_id}`\n"
+            f"• **Статус:** В очереди на рассмотрение\n\n"
+            f"Администрация BEST RUSSIA уже получила уведомление и ответит вам прямо в этом чате. Ожидайте."
         )
+        return_to_menu(message, success_text)
 
-        # Отправка в админ-чат
+        # 3. Отправка уведомления вам (админу)
         if ADMIN_CHAT_ID:
             admin_msg = (
-                f"🚨 **Новый тикет #{ticket_id}**\n"
-                f"👤 **Игрок:** {nickname} (ID: `{user_id}`)\n"
-                f" Telegram: @{message.from_user.username or 'отсутствует'}\n\n"
-                f"📋 **Суть проблемы:**\n{issue_text}"
+                f"🚨 **НОВЫЙ ТИКЕТ #{ticket_id}**\n"
+                f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+                f"👤 **Игрок:** `{nickname}`\n"
+                f"🆔 **Telegram ID:** `{user_id}`\n"
+                f"📱 **Профиль:** @{message.from_user.username or 'скрыт'}\n\n"
+                f"📋 **Суть проблемы:**\n_{issue_text}_"
             )
+            
             keyboard = types.InlineKeyboardMarkup()
             keyboard.add(types.InlineKeyboardButton(text="❌ Закрыть тикет", callback_data=f"close_{ticket_id}"))
             
             bot.send_message(ADMIN_CHAT_ID, admin_msg, parse_mode="Markdown", reply_markup=keyboard)
 
- 
     except Exception as e:
-        logging.error(f"Ошибка: {e}")
+        logging.error(f"Ошибка отправки тикета {user_id}: {e}")
+        return_to_menu(message, "❌ Ошибка при отправке тикета. Попробуйте позже.")
+
+
+def return_to_menu(message, text):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    markup.add(types.KeyboardButton("🚨 Создать обращение"), types.KeyboardButton("ℹ️ Часто задаваемые вопросы"))
+    bot.send_message(message.chat.id, text, parse_mode="Markdown", reply_markup=markup)
+
+
+# --- КНОПКА ЗАКРЫТИЯ ДЛЯ АДМИНА ---
+@bot.callback_query_handler(func=lambda call: call.data.startswith('close_'))
+def handle_close_ticket(call):
+    ticket_id = call.data.split('_')[1]
+    try:
+        supabase.table("tickets").update({"status": "closed"}).eq("id", ticket_id).execute()
+        
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text=call.message.text + f"\n\n🔒 **Тикет успешно закрыт и архивирован.**",
+            reply_markup=None
+        )
+        bot.answer_callback_query(call.id, text="Тикет закрыт!")
+    except Exception as e:
+        logging.error(f"Ошибка закрытия тикета {ticket_id}: {e}")
         bot.answer_callback_query(call.id, text="Ошибка базы данных.")
 
+
+# --- ЗАПУСК ПОТОКОВ С ЗАЩИТОЙ ОТ ПАДЕНИЙ ---
+if __name__ == "__main__":
+    try:
+        # 1. Запуск веб-сервера для UptimeRobot
+        web_thread = threading.Thread(target=run_web_server, daemon=True)
+        web_thread.start()
+
+        # 2. Запуск бота
+        logging.info("🚀 Бот BEST RUSSIA успешно запущен и готов к работе...")
+        bot.infinity_polling()
+        
+    except Exception as fatal_error:
+        logging.critical(f"💥 КРИТИЧЕСКИЙ СБОЙ ПРИ ЗАПУСКЕ БОТА: {fatal_error}", exc_info=True)
