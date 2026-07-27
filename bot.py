@@ -13,11 +13,10 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-# --- НАСТРОЙКИ И ПЕРЕМЕННЫЕ (ЖЕСТКО В КОДЕ) ---
+# --- НАСТРОЙКИ И ПЕРЕМЕННЫЕ (ФИНАЛЬНЫЙ ВАРИАНТ) ---
 ADMIN_CHAT_ID = "8915047087"
 SUPABASE_URL = "https://supabase.co"
 SUPABASE_KEY = "sb_publishable_8WXX1OgOJ7Vn92CWFI5MXQ_dLxjfNa3"
-
 # Вставьте сюда ваш токен от @BotFather (например: "123456789:ABCdef...")
 BOT_TOKEN = "8957594048:AAFMQMbt2J5eDPxZZ2RBner-OWnMMpDnCG0"
 
