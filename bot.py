@@ -13,12 +13,14 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-# --- НАСТРОЙКИ И ПЕРЕМЕННЫЕ ---
+# --- НАСТРОЙКИ И ПЕРЕМЕННЫЕ (ФИНАЛЬНЫЙ РАБОЧИЙ ВАРИАНТ) ---
 ADMIN_CHAT_ID = "8915047087"
 SUPABASE_URL = "https://supabase.co"
-SUPABASE_KEY = "sb_publishable_8WXX1OgOJ7Vn92CWFI5MXQ_dLxjfNa3"
 
-# Вставьте сюда ваш токен от @BotFather (например: "123456789:ABCdef...")
+# Сюда вставьте секретный ключ service_role (начинается на eyJ...)
+SUPABASE_KEY = "sb_secret_XQK6aHhsXhzrbRA2G7QaYQ_Jrrye5bc"
+
+# Сюда вставьте ваш токен из @BotFather
 BOT_TOKEN = "8957594048:AAFMQMbt2J5eDPxZZ2RBner-OWnMMpDnCG0"
 
 bot = telebot.TeleBot(BOT_TOKEN)
