@@ -1,3 +1,4 @@
+# Финальная сборка техподдержки Best Russia
 import os
 import logging
 import threading
