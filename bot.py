@@ -19,7 +19,7 @@ SUPABASE_URL = "https://supabase.co"
 SUPABASE_KEY = "sb_secret_XQK6aHhsXhzrbRA2G7QaYQ_Jrrye5bc"
 
 # Вставьте сюда ваш токен от @BotFather (например: "123456789:ABCdef...")
-BOT_TOKEN = "8957594048:AAFMQMbt2J5eDPxZZ2RBner-OWnMMpDnCG0"
+BOT_TOKEN = "8957594048:AAHKkvlMHKVEQcZ0awDDWtpD6F37LGrp9lE"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
