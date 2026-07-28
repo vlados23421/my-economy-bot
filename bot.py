@@ -2,9 +2,9 @@ import os
 import logging
 import threading
 import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import telebot
 from telebot import types
-from flask import Flask
 
 # Настройка логирования
 logging.basicConfig(
@@ -17,23 +17,30 @@ logging.basicConfig(
 ADMIN_CHAT_ID = "8915047087"
 BOT_TOKEN = "8957594048:AAHzRvyv9r1NssqlBlXYOZuujYcSVI2t20c"
 
+# Временное хранилище данных игроков
 user_cooldowns = {}
-COOLDOWN_TIME = 600  # 10 минут
+COOLDOWN_TIME = 600  # 10 минут кулдауна на новые тикеты
 user_data_storage = {}  # Храним информацию {user_id: {"nickname": "...", "category": "..."}}
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# --- НАДЕЖНЫЙ ВЕБ-СЕРВЕР НА FLASK ДЛЯ RENDER И UPTIMEROBOT ---
-app = Flask(__name__)
 
-@app.route('/')
-def health_check():
-    return "BEST RUSSIA Support is active!", 200
+# --- ВЕБ-СЕРВЕР ДЛЯ РЕНДЕРА И UPTIMEROBOT ---
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(b"BEST RUSSIA Support is active!")
+    def log_message(self, format, *args):
+        return
 
-def run_flask():
+def run_web_server():
+    # Берем порт, который требует Render, или ставим 10000 по умолчанию
     port = int(os.environ.get("PORT", 10000))
-    # Запускаем Flask на порту хостинга. В бесплатном тарифе Render это обязательно.
-    app.run(host="0.0.0.0", port=port)
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    logging.info(f"🌐 Веб-сервер успешно запущен на порту {port}")
+    server.serve_forever()
 
 
 # --- КОМАНДА /START И ГЛАВНОЕ МЕНЮ ---
@@ -44,7 +51,7 @@ def cmd_start(message):
 
 def send_welcome_menu(chat_id, username=None):
     name = username or "Игрок"
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
     btn_support = types.KeyboardButton("🚨 Создать обращение")
     btn_faq = types.KeyboardButton("ℹ️ Часто задаваемые вопросы")
     btn_resources = types.KeyboardButton("🌐 Наши ресурсы")
@@ -208,10 +215,3 @@ def process_issue(message):
 
     admin_msg = (
         f"🚨 **НОВЫЙ ТИКЕТ ПОДДЕРЖКИ**\n📁 **Категория:** {category_title}\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-        f"👤 **Игрок:** `{nickname}`\n📱 **Профиль:** @{message.from_user.username or 'скрыт'}\n\n"
-        f"📋 **Суть проблемы:**\n_{issue_text}_\n\n⚙️ `id_user:{user_id}`"
-    )
-    bot.send_message(ADMIN_CHAT_ID, admin_msg, parse_mode="Markdown")
-
-
-# --- ОТВЕТ ИГРОКУ И ВЫДАЧА КНОПОК ОЦЕНКИ ---
