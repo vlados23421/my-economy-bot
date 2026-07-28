@@ -15,7 +15,7 @@ logging.basicConfig(
 
 # --- НАСТРОЙКИ ---
 ADMIN_CHAT_ID = "8915047087"
-BOT_TOKEN = "8957594048:AAHKkvlMHKVEQcZ0awDDWtpD6F37LGrp9lE"
+BOT_TOKEN = "8957594048:AAHzRvyv9r1NssqlBlXYOZuujYcSVI2t20c"
 
 user_cooldowns = {}
 COOLDOWN_TIME = 600  # 10 минут кулдауна на тикеты
