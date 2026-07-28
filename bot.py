@@ -170,7 +170,10 @@ def handle_callbacks(call):
         bot.answer_callback_query(call.id)
 
     elif call.data.startswith('rate:'):
-        stars, admin_id = call.data.split(':')[1], call.data.split Jules:139:26:
+        data_parts = call.data.split(':')
+        stars = data_parts[1]
+        admin_id = data_parts[2]
+        
         bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
         bot.send_message(call.message.chat.id, "❤️ Спасибо за вашу оценку! Вы помогаете делать BEST RUSSIA лучше.")
         bot.send_message(ADMIN_CHAT_ID, f"📊 **Новый отзыв!**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n👤 Игрок поставил оценку: {stars} из 5 звёзд! ⭐")
@@ -212,5 +215,3 @@ def process_issue(message, nickname, category_title):
         msg = bot.send_message(message.chat.id, "⚠️ Опишите проблему обычным текстом:")
         bot.register_next_step_handler(msg, process_issue, nickname, category_title)
         return
-
-    user_cooldowns[user_id] = time.time()
