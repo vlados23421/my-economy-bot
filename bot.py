@@ -6,7 +6,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import telebot
 from telebot import types
 
-# Настройка логирования для вывода в панель Render
+# Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -15,16 +15,19 @@ logging.basicConfig(
 
 # --- НАСТРОЙКИ ---
 ADMIN_CHAT_ID = "8915047087"
-BOT_TOKEN = "8957594048:AAECYvjhvdb0QGduh8p1lMV06SV7Z969rms"
+BOT_TOKEN = "8957594048:AAHzRvyv9r1NssqlBlXYOZuujYcSVI2t20c"
 
-# Хранилище только для антифлуда (ограничение 10 минут)
+# РЕЖИМ ТЕХ. РАБОТ: Измените на True, чтобы закрыть бота для всех игроков!
+MAINTENANCE_MODE = False
+
 user_cooldowns = {}
 COOLDOWN_TIME = 600  
+user_data_storage = {}  
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
 
-# --- ВЕБ-СЕРВЕР ДЛЯ WEB SERVICE RENDER ---
+# --- ВЕБ-СЕРВЕР ДЛЯ RENDER ---
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -37,8 +40,50 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
 def run_web_server():
     port = int(os.environ.get("PORT", 10000))
     server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
-    logging.info(f"🌐 Веб-сервер успешно запущен на порту {port}")
+    logging.info(f"🌐 Веб-сервер запущен на порту {port}")
     server.serve_forever()
+
+
+# --- ПРОВЕРКА РЕЖИМА ТЕХ. РАБОТ ДЛЯ ВСЕХ КОМАНД ---
+@bot.message_handler(func=lambda message: MAINTENANCE_MODE and message.chat.id != int(ADMIN_CHAT_ID))
+def handle_maintenance(message):
+    tech_text = (
+        "🛠 **ВНИМАНИЕ! ТЕХНИЧЕСКИЕ РАБОТЫ**\n"
+        "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        "Бот технической поддержки проекта **BEST RUSSIA** временно закрыт на техническое обслуживание.\n\n"
+        "⚙️ Мы обновляем систему, чтобы помогать вам ещё быстрее. Совсем скоро мы снова откроемся, следите за новостями в канале!"
+    )
+    bot.send_message(message.chat.id, tech_text, parse_mode="Markdown", reply_markup=types.ReplyKeyboardRemove())
+
+
+# --- КОМАНДА ДЛЯ АДМИНА ДЛЯ УПРАВЛЕНИЯ ТЕХ. РАБОТАМИ ---
+@bot.message_handler(commands=['adminpanel'])
+def cmd_adminpanel(message):
+    if message.chat.id == int(ADMIN_CHAT_ID):
+        keyboard = types.InlineKeyboardMarkup()
+        if MAINTENANCE_MODE:
+            keyboard.add(types.InlineKeyboardButton("🟢 Открыть бота для игроков", callback_data="set_work_open"))
+        else:
+            keyboard.add(types.InlineKeyboardButton("🔴 Закрыть бота на тех. работы", callback_data="set_work_close"))
+            
+        status = "❌ ЗАКРЫТ НА ТЕХ. РАБОТЫ" if MAINTENANCE_MODE else "🟢 РАБОТАЕТ В ШТАТНОМ РЕЖИМЕ"
+        bot.send_message(ADMIN_CHAT_ID, f"🎛 **Панель управления BEST RUSSIA**\n Текущий статус бота: *{status}*", parse_mode="Markdown", reply_markup=keyboard)
+
+
+# --- ОБРАБОТКА НАЖАТИЯ АДМИН-КНОПОК ---
+@bot.callback_query_handler(func=lambda call: call.data.startswith('set_work_'))
+def handle_admin_panel_callback(call):
+    global MAINTENANCE_MODE
+    if call.message.chat.id == int(ADMIN_CHAT_ID):
+        action = call.data.split('_')[-1]
+        
+        if action == "close":
+            MAINTENANCE_MODE = True
+            bot.edit_message_text("🛠 **Бот успешно закрыт на тех. работы!**\nТеперь обычные игроки при любом нажатии будут видеть сообщение о тех. работах.", chat_id=call.message.chat.id, message_id=call.message.message_id)
+        elif action == "open":
+            MAINTENANCE_MODE = False
+            bot.edit_message_text("🟢 **Бот успешно открыт в штатном режиме!**\nИгроки снова могут создавать тикеты и читать FAQ.", chat_id=call.message.chat.id, message_id=call.message.message_id)
+        bot.answer_callback_query(call.id)
 
 
 # --- КОМАНДА /START И ГЛАВНОЕ МЕНЮ ---
@@ -83,13 +128,13 @@ def handle_menu(message):
                 )
                 return
 
+        user_data_storage[user_id] = {"nickname": "Не указан", "category": "Не указана"}
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
         markup.add(types.KeyboardButton("❌ Отмена"))
         
         msg = bot.send_message(
             message.chat.id, 
-            "👤 **Шаг 1 из 2:** Введите ваш точный игровой никнейм (например, `Ivan_Ivanov`):\n\n"
-            "_Если передумали, нажмите кнопку «❌ Отмена» ниже._",
+            "👤 **Шаг 1 из 2:** Введите ваш точный игровой никнейм (например, `Ivan_Ivanov`):\n\n_Если передумали, нажмите кнопку «❌ Отмена» ниже._",
             parse_mode="Markdown",
             reply_markup=markup
         )
@@ -97,14 +142,10 @@ def handle_menu(message):
         
     elif message.text == "ℹ️ Часто задаваемые вопросы":
         faq_text = (
-            "📌 **Популярные вопросы и ответы:**\n"
-            "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-            "📱 **Проблемы с лаунчером и сборкой:**\n"
-            "➡️ Нажмите кнопку 'Починить игру' в лаунчере или удалите сторонние клео-скрипты.\n\n"
-            "🎮 **Игровой процесс:**\n"
-            "➡️ Устроиться на работу можно в Центре занятости (`/gps`). Жалобы на админов оставляйте в группе ВК.\n\n"
-            "💳 **Проблемы с донатом:**\n"
-            "➡️ Обработка платежа занимает до 15 минут. Если донат не пришел, создайте обращение в этом боте."
+            "📌 **Популярные вопросы и ответы:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            "📱 **Проблемы с лаунчером и сборкой:**\n➡️ Нажмите кнопку 'Починить игру' в лаунчере или удалите сторонние клео-скрипты.\n\n"
+            "🎮 **Игровой процесс:**\n➡️ Устроиться на работу можно в Центре занятости (`/gps`). Жалобы на админов оставляйте в группе ВК.\n\n"
+            "💳 **Проблемы с донатом:**\n➡️ Обработка платежа занимает до 15 минут. Если донат не пришел, создайте обращение в этом боте."
         )
         bot.send_message(message.chat.id, faq_text, parse_mode="Markdown")
 
@@ -112,29 +153,21 @@ def handle_menu(message):
         keyboard = types.InlineKeyboardMarkup(row_width=1)
         keyboard.add(
             types.InlineKeyboardButton("📢 Телеграм канал проекта", url="https://t.me/BestRPSueta"),
-            types.InlineKeyboardButton("🇷🇺 Официальное сообщество ВК", url="https://vk.ru/bestrussiaonlinerp")
+            types.InlineKeyboardButton("🇷🇺 Лаборатория разработчиков", url="https://t.me/DevelopmentSiteMe")
         )
         bot.send_message(message.chat.id, "🌐 **Официальные ресурсы проекта BEST RUSSIA:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\nПодписывайтесь! 👇", reply_markup=keyboard)
 
 
-# --- СБОР ДАННЫХ ТИКЕТА (ПРЯМАЯ ПЕРЕДАЧА) ---
 def process_nickname(message):
     if message.text == "❌ Отмена":
         send_welcome_menu(message.chat.id, message.from_user.username)
         return
-        
     nickname = message.text
     if not nickname or nickname.startswith('/'):
         msg = bot.send_message(message.chat.id, "⚠️ Никнейм не может быть командой. Введите игровой ник:")
         bot.register_next_step_handler(msg, process_nickname)
         return
-
-    msg = bot.send_message(
-        message.chat.id, 
-        f"📝 **Шаг 2 из 2:** Отлично, `{nickname}`. Теперь подробно опишите вашу проблему текстом:",
-        parse_mode="Markdown"
-    )
-    # Прямо передаем никнейм в следующий шаг без всяких баз данных и хранилищ
+    msg = bot.send_message(message.chat.id, f"📝 **Шаг 2 из 2:** Отлично, `{nickname}`. Теперь подробно опишите вашу проблему текстом:", parse_mode="Markdown")
     bot.register_next_step_handler(msg, process_issue, nickname)
 
 
@@ -142,7 +175,6 @@ def process_issue(message, nickname):
     if message.text == "❌ Отмена":
         send_welcome_menu(message.chat.id, message.from_user.username)
         return
-        
     issue_text = message.text
     user_id = message.from_user.id
     if not issue_text or issue_text.startswith('/'):
@@ -150,37 +182,25 @@ def process_issue(message, nickname):
         bot.register_next_step_handler(msg, process_issue, nickname)
         return
 
-    # Включаем антифлуд таймер
     user_cooldowns[user_id] = time.time()
-    
     send_welcome_menu(message.chat.id, message.from_user.username)
     bot.send_message(message.chat.id, "✅ **Ваше обращение успешно отправлено администрации BEST RUSSIA! Ожидайте ответа.**")
 
-    # Сразу формируем сообщение для вас
     admin_msg = (
-        f"🚨 **НОВЫЙ ТИКЕТ ПОДДЕРЖКИ**\n"
-        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-        f"👤 **Игрок:** `{nickname}`\n"
-        f"📱 **Профиль:** @{message.from_user.username or 'скрыт'}\n\n"
-        f"📋 **Суть проблемы:**\n_{issue_text}_\n\n"
-        f"⚙️ `id_user:{user_id}`"
+        f"🚨 **НОВЫЙ ТИКЕТ ПОДДЕРЖКИ**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"👤 **Игрок:** `{nickname}`\n📱 **Профиль:** @{message.from_user.username or 'скрыт'}\n\n"
+        f"📋 **Суть проблемы:**\n_{issue_text}_\n\n⚙️ `id_user:{user_id}`"
     )
     bot.send_message(ADMIN_CHAT_ID, admin_msg, parse_mode="Markdown")
 
 
-# --- ОТВЕТ ИГРОКУ ЧЕРЕЗ СТАНДАРТНЫЙ REPLY ---
 @bot.message_handler(func=lambda message: message.chat.id == int(ADMIN_CHAT_ID) and message.reply_to_message is not None)
 def handle_admin_reply(message):
     try:
         reply_text = message.reply_to_message.text
         if "⚙️ id_user:" in reply_text:
             target_user_id = reply_text.split("⚙️ id_user:")[-1].strip()
-            
-            user_msg = (
-                f"✉️ **Ответ от администрации BEST RUSSIA:**\n"
-                f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-                f"{message.text}"
-            )
+            user_msg = f"✉️ **Ответ от администрации BEST RUSSIA:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n{message.text}"
             bot.send_message(target_user_id, user_msg, parse_mode="Markdown")
             bot.send_message(ADMIN_CHAT_ID, f"✅ Ответ успешно доставлен игроку (ID: `{target_user_id}`)!")
     except Exception as e:
@@ -193,10 +213,7 @@ def run_bot_polling():
     bot.infinity_polling()
 
 
-# --- ПРАВИЛЬНЫЙ ЗАПУСК ДЛЯ WEB SERVICE RENDER ---
 if __name__ == "__main__":
     bot_thread = threading.Thread(target=run_bot_polling, daemon=True)
     bot_thread.start()
-    
-    # Веб-сервер работает главным процессом, чтобы Render не выдавал "Application exited early"
     run_web_server()
