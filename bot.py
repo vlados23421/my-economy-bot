@@ -215,3 +215,8 @@ def process_issue(message):
 
     admin_msg = (
         f"🚨 **НОВЫЙ ТИКЕТ ПОДДЕРЖКИ**\n📁 **Категория:** {category_title}\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"👤 **Игрок:** `{nickname}`\n📱 **Профиль:** @{message.from_user.username or 'скрыт'}\n\n"
+        f"📋 **Суть проблемы:**\n_{issue_text}_\n\n⚙️ `id_user:{user_id}`"
+    )
+    
+    bot.send_message(ADMIN_CHAT_ID, admin_msg, parse_mode="Markdown")
