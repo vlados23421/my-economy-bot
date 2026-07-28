@@ -2,9 +2,9 @@ import os
 import logging
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import telebot
 from telebot import types
+from flask import Flask
 
 # Настройка логирования
 logging.basicConfig(
@@ -17,29 +17,23 @@ logging.basicConfig(
 ADMIN_CHAT_ID = "8915047087"
 BOT_TOKEN = "8957594048:AAHzRvyv9r1NssqlBlXYOZuujYcSVI2t20c"
 
-# Временное хранилище данных игроков
 user_cooldowns = {}
-COOLDOWN_TIME = 600  # 10 минут кулдауна на новые тикеты
+COOLDOWN_TIME = 600  # 10 минут
 user_data_storage = {}  # Храним информацию {user_id: {"nickname": "...", "category": "..."}}
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
+# --- НАДЕЖНЫЙ ВЕБ-СЕРВЕР НА FLASK ДЛЯ RENDER И UPTIMEROBOT ---
+app = Flask(__name__)
 
-# --- ВЕБ-СЕРВЕР ДЛЯ UPTIMEROBOT ---
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain; charset=utf-8")
-        self.end_headers()
-        self.wfile.write(b"BEST RUSSIA Support is active!")
-    def log_message(self, format, *args):
-        return
+@app.route('/')
+def health_check():
+    return "BEST RUSSIA Support is active!", 200
 
-def run_web_server():
+def run_flask():
     port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
-    logging.info(f"🌐 Сервер UptimeRobot запущен на порту {port}")
-    server.serve_forever()
+    # Запускаем Flask на порту хостинга. В бесплатном тарифе Render это обязательно.
+    app.run(host="0.0.0.0", port=port)
 
 
 # --- КОМАНДА /START И ГЛАВНОЕ МЕНЮ ---
@@ -53,9 +47,8 @@ def send_welcome_menu(chat_id, username=None):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     btn_support = types.KeyboardButton("🚨 Создать обращение")
     btn_faq = types.KeyboardButton("ℹ️ Часто задаваемые вопросы")
-    btn_status = types.KeyboardButton("📊 Статус сервера")
     btn_resources = types.KeyboardButton("🌐 Наши ресурсы")
-    markup.add(btn_support, btn_faq, btn_status, btn_resources)
+    markup.add(btn_support, btn_faq, btn_resources)
 
     welcome_text = (
         f"🇷🇺 **Добро пожаловать на проект BEST RUSSIA!**\n"
@@ -68,7 +61,7 @@ def send_welcome_menu(chat_id, username=None):
 
 
 # --- ОБРАБОТКА МЕНЮ ДЛЯ ИГРОКОВ ---
-@bot.message_handler(func=lambda message: message.chat.id != int(ADMIN_CHAT_ID) and message.text in ["🚨 Создать обращение", "ℹ️ Часто задаваемые вопросы", "🌐 Наши ресурсы", "📊 Статус сервера"])
+@bot.message_handler(func=lambda message: message.chat.id != int(ADMIN_CHAT_ID) and message.text in ["🚨 Создать обращение", "ℹ️ Часто задаваемые вопросы", "🌐 Наши ресурсы"])
 def handle_menu(message):
     user_id = message.from_user.id
 
@@ -80,12 +73,11 @@ def handle_menu(message):
                 time_left = int(COOLDOWN_TIME - time_passed)
                 bot.send_message(
                     message.chat.id, 
-                    f"⚠️ **Антифлуд система!**\nПодать новое обращение можно через: `{time_left // 60} min. {time_left % 60} sec.`",
+                    f"⚠️ **Антифлуд система!**\nПодать новое обращение можно через: `{time_left // 60} мин. {time_left % 60} сек.`",
                     parse_mode="Markdown"
                 )
                 return
 
-        # Инициализируем пустой словарь для юзера
         user_data_storage[user_id] = {"nickname": "Не указан", "category": "Не указана"}
 
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
@@ -109,17 +101,6 @@ def handle_menu(message):
             types.InlineKeyboardButton("📜 4. Правила и Жалобы", callback_data="faq_rules")
         )
         bot.send_message(message.chat.id, "📂 **Выберите интересующий раздел часто задаваемых вопросов:**", reply_markup=keyboard)
-
-    elif message.text == "📊 Статус сервера":
-        status_text = (
-            "📊 **Статус серверов проекта BEST RUSSIA:**\n"
-            "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-            "🟢 **Основной сервер:** `ONLINE`\n"
-            "🛠 **Лаунчер и автообновления:** `РАБОТАЮТ ШТАТНО`\n\n"
-            "🔗 **IP Адрес для подключения:** `play.bestrussia-rp.ru:7777`\n"
-            "💡 _Если вы не можете зайти на сервер, проверьте лаунчер._"
-        )
-        bot.send_message(message.chat.id, status_text, parse_mode="Markdown")
 
     elif message.text == "🌐 Наши ресурсы":
         keyboard = types.InlineKeyboardMarkup(row_width=1)
@@ -161,7 +142,6 @@ def handle_callbacks(call):
         elif category == "donate": cat_emoji = "💳 [ДОНАТ]"
         elif category == "other": cat_emoji = "💬 [ОБЩИЙ ВОПРОС]"
 
-        # Сохраняем категорию во временную память
         if user_id in user_data_storage:
             user_data_storage[user_id]["category"] = cat_emoji
 
@@ -174,13 +154,10 @@ def handle_callbacks(call):
         bot.answer_callback_query(call.id)
 
     elif call.data.startswith('rate:'):
-        # Безопасно извлекаем количество звезд из callback_data
-        stars_count = call.data.split(':')[1]
+        stars_count = call.data.split(':')[-1]
         
         bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
         bot.send_message(call.message.chat.id, "❤️ Спасибо за вашу оценку! Вы помогаете делать BEST RUSSIA лучше.")
-        
-        # Отправляем отзыв напрямую вам в ЛС
         bot.send_message(ADMIN_CHAT_ID, f"📊 **Новый отзыв о поддержке!**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n👤 Игрок оценил вашу работу на: {stars_count} из 5 звёзд! ⭐")
         bot.answer_callback_query(call.id)
 
@@ -197,7 +174,6 @@ def process_nickname(message):
         bot.register_next_step_handler(msg, process_nickname)
         return
 
-    # Сохраняем ник во временную память
     if user_id in user_data_storage:
         user_data_storage[user_id]["nickname"] = nickname
 
@@ -217,3 +193,25 @@ def process_issue(message):
         return
     issue_text = message.text
     user_id = message.from_user.id
+    if not issue_text or issue_text.startswith('/'):
+        msg = bot.send_message(message.chat.id, "⚠️ Опишите проблему обычным текстом:")
+        bot.register_next_step_handler(msg, process_issue)
+        return
+
+    user_info = user_data_storage.get(user_id, {"nickname": "Не указан", "category": "Не указана"})
+    nickname = user_info["nickname"]
+    category_title = user_info["category"]
+
+    user_cooldowns[user_id] = time.time()
+    send_welcome_menu(message.chat.id, message.from_user.username)
+    bot.send_message(message.chat.id, "✅ **Ваше обращение отправлено администрации BEST RUSSIA! Ожидайте ответа.**")
+
+    admin_msg = (
+        f"🚨 **НОВЫЙ ТИКЕТ ПОДДЕРЖКИ**\n📁 **Категория:** {category_title}\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"👤 **Игрок:** `{nickname}`\n📱 **Профиль:** @{message.from_user.username or 'скрыт'}\n\n"
+        f"📋 **Суть проблемы:**\n_{issue_text}_\n\n⚙️ `id_user:{user_id}`"
+    )
+    bot.send_message(ADMIN_CHAT_ID, admin_msg, parse_mode="Markdown")
+
+
+# --- ОТВЕТ ИГРОКУ И ВЫДАЧА КНОПОК ОЦЕНКИ ---
