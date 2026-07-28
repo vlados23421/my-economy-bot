@@ -110,6 +110,18 @@ def send_welcome_menu(chat_id, username=None):
     bot.send_message(chat_id, welcome_text, parse_mode="Markdown", reply_markup=markup)
 
 
+# --- ПРОВЕРКА РЕЖИМА ТЕХ. РАБОТ ДЛЯ ВСЕХ ОСТАЛЬНЫХ НАЖАТИЙ ---
+@bot.message_handler(func=lambda message: MAINTENANCE_MODE and message.chat.id != int(ADMIN_CHAT_ID))
+def handle_maintenance(message):
+    tech_text = (
+        "🛠 **ВНИМАНИЕ! ТЕХНИЧЕСКИЕ РАБОТЫ**\n"
+        "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        "Бот технической поддержки проекта **BEST RUSSIA** временно закрыт на техническое обслуживание.\n\n"
+        "⚙️ Мы обновляем систему, чтобы помогать вам ещё быстрее. Совсем скоро мы снова откроемся, следите за новостями в канале!"
+    )
+    bot.send_message(message.chat.id, tech_text, parse_mode="Markdown", reply_markup=types.ReplyKeyboardRemove())
+
+
 # --- ОБРАБОТКА МЕНЮ ДЛЯ ИГРОКОВ ---
 @bot.message_handler(func=lambda message: message.text in ["🚨 Создать обращение", "ℹ️ Часто задаваемые вопросы", "🌐 Наши ресурсы"])
 def handle_menu(message):
