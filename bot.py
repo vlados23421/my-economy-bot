@@ -66,7 +66,7 @@ def send_welcome_menu(chat_id, username=None):
 
 
 # --- ОБРАБОТКА МЕНЮ ДЛЯ ИГРОКОВ ---
-@bot.message_handler(func=lambda message: message.chat.id != int(ADMIN_CHAT_ID) and message.text in ["🚨 Создать обращение", "ℹ️ Часто задаваемые вопросы", "🌐 Наши ресурсы"])
+@bot.message_handler(func=lambda message: message.text in ["🚨 Создать обращение", "ℹ️ Часто задаваемые вопросы", "🌐 Наши ресурсы"])
 def handle_menu(message):
     user_id = message.from_user.id
 
