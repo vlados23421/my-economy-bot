@@ -17,10 +17,10 @@ logging.basicConfig(
 ADMIN_CHAT_ID = "8915047087"
 BOT_TOKEN = "8957594048:AAHzRvyv9r1NssqlBlXYOZuujYcSVI2t20c"
 
-# Хранилище для антифлуда и временных данных игроков
+# Временное хранилище данных игроков
 user_cooldowns = {}
-COOLDOWN_TIME = 600  # 10 минут кулдауна
-user_data_storage = {}  # Временное хранение ников {user_id: nickname}
+COOLDOWN_TIME = 600  # 10 минут кулдауна на новые тикеты
+user_data_storage = {}  # Храним информацию {user_id: {"nickname": "...", "category": "..."}}
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -80,10 +80,13 @@ def handle_menu(message):
                 time_left = int(COOLDOWN_TIME - time_passed)
                 bot.send_message(
                     message.chat.id, 
-                    f"⚠️ **Антифлуд система!**\nПодать новое обращение можно через: `{time_left // 60} мин. {time_left % 60} сек.`",
+                    f"⚠️ **Антифлуд система!**\nПодать новое обращение можно через: `{time_left // 60} min. {time_left % 60} sec.`",
                     parse_mode="Markdown"
                 )
                 return
+
+        # Инициализируем пустой словарь для юзера
+        user_data_storage[user_id] = {"nickname": "Не указан", "category": "Не указана"}
 
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
         markup.add(types.KeyboardButton("❌ Отмена"))
@@ -112,7 +115,7 @@ def handle_menu(message):
             "📊 **Статус серверов проекта BEST RUSSIA:**\n"
             "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
             "🟢 **Основной сервер:** `ONLINE`\n"
-            "🛠 **Лаунчер и автообновления:** `РАБОТАЮТ СТАТИСТИЧЕСКИ`\n\n"
+            "🛠 **Лаунчер и автообновления:** `РАБОТАЮТ ШТАТНО`\n\n"
             "🔗 **IP Адрес для подключения:** `play.bestrussia-rp.ru:7777`\n"
             "💡 _Если вы не можете зайти на сервер, проверьте лаунчер._"
         )
@@ -127,9 +130,11 @@ def handle_menu(message):
         bot.send_message(message.chat.id, "🌐 **Официальные ресурсы проекта BEST RUSSIA:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\nПодписывайтесь! 👇", reply_markup=keyboard)
 
 
-# --- ИНЛАЙН ОБРАБОТЧИК ДЛЯ FAQ И ОЦЕНОК ---
+# --- ИНЛАЙН ОБРАБОТЧИК ДЛЯ FAQ, КАТЕГОРИЙ И ОЦЕНОК ---
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callbacks(call):
+    user_id = call.from_user.id
+
     if call.data.startswith("faq_"):
         section = call.data.split("_")[-1]
         faq_response = ""
@@ -148,8 +153,6 @@ def handle_callbacks(call):
 
     elif call.data.startswith('cat_'):
         category = call.data.split('_')[-1]
-        user_id = call.from_user.id
-        
         bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
 
         cat_emoji = "❓"
@@ -158,25 +161,27 @@ def handle_callbacks(call):
         elif category == "donate": cat_emoji = "💳 [ДОНАТ]"
         elif category == "other": cat_emoji = "💬 [ОБЩИЙ ВОПРОС]"
 
-        # Достаем никнейм из временной памяти
-        nickname = user_data_storage.get(user_id, "Не указан")
+        # Сохраняем категорию во временную память
+        if user_id in user_data_storage:
+            user_data_storage[user_id]["category"] = cat_emoji
 
         msg = bot.send_message(
             call.message.chat.id, 
             f"📝 **Шаг 3 из 3:** Вы выбрали категорию: *{cat_emoji}*.\n\nТеперь подробно опишите вашу проблему текстом.",
             parse_mode="Markdown"
         )
-        bot.register_next_step_handler(msg, process_issue, nickname, cat_emoji)
+        bot.register_next_step_handler(msg, process_issue)
         bot.answer_callback_query(call.id)
 
     elif call.data.startswith('rate:'):
-        data_parts = call.data.split(':')
-        stars = data_parts[1]
-        admin_id = data_parts[2]
+        # Безопасно извлекаем количество звезд из callback_data
+        stars_count = call.data.split(':')[1]
         
         bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
         bot.send_message(call.message.chat.id, "❤️ Спасибо за вашу оценку! Вы помогаете делать BEST RUSSIA лучше.")
-        bot.send_message(ADMIN_CHAT_ID, f"📊 **Новый отзыв!**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n👤 Игрок поставил оценку: {stars} из 5 звёзд! ⭐")
+        
+        # Отправляем отзыв напрямую вам в ЛС
+        bot.send_message(ADMIN_CHAT_ID, f"📊 **Новый отзыв о поддержке!**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n👤 Игрок оценил вашу работу на: {stars_count} из 5 звёзд! ⭐")
         bot.answer_callback_query(call.id)
 
 
@@ -192,8 +197,9 @@ def process_nickname(message):
         bot.register_next_step_handler(msg, process_nickname)
         return
 
-    # Временно сохраняем ник в память по ID пользователя
-    user_data_storage[user_id] = nickname
+    # Сохраняем ник во временную память
+    if user_id in user_data_storage:
+        user_data_storage[user_id]["nickname"] = nickname
 
     keyboard = types.InlineKeyboardMarkup(row_width=2)
     keyboard.add(
@@ -205,13 +211,9 @@ def process_nickname(message):
     bot.send_message(message.chat.id, f"📋 **Шаг 2 из 3:** Отлично, `{nickname}`. Выберите категорию:", parse_mode="Markdown", reply_markup=keyboard)
 
 
-def process_issue(message, nickname, category_title):
+def process_issue(message):
     if message.text == "❌ Отмена":
         send_welcome_menu(message.chat.id, message.from_user.username)
         return
     issue_text = message.text
     user_id = message.from_user.id
-    if not issue_text or issue_text.startswith('/'):
-        msg = bot.send_message(message.chat.id, "⚠️ Опишите проблему обычным текстом:")
-        bot.register_next_step_handler(msg, process_issue, nickname, category_title)
-        return
