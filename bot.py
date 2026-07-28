@@ -15,7 +15,7 @@ logging.basicConfig(
 
 # --- НАСТРОЙКИ ---
 ADMIN_CHAT_ID = "8915047087"
-BOT_TOKEN = "8957594048:AAHzRvyv9r1NssqlBlXYOZuujYcSVI2t20c"
+BOT_TOKEN = "8957594048:AAECYvjhvdb0QGduh8p1lMV06SV7Z969rms"
 
 # Хранилище только для антифлуда (ограничение 10 минут)
 user_cooldowns = {}
