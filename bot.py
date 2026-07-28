@@ -17,8 +17,10 @@ logging.basicConfig(
 ADMIN_CHAT_ID = "8915047087"
 BOT_TOKEN = "8957594048:AAHzRvyv9r1NssqlBlXYOZuujYcSVI2t20c"
 
+# Хранилище для антифлуда и временных данных игроков
 user_cooldowns = {}
-COOLDOWN_TIME = 600  # 10 минут кулдауна на тикеты
+COOLDOWN_TIME = 600  # 10 минут кулдауна
+user_data_storage = {}  # Временное хранение ников {user_id: nickname}
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -103,86 +105,61 @@ def handle_menu(message):
             types.InlineKeyboardButton("💳 3. Донат и Магазин", callback_data="faq_donate"),
             types.InlineKeyboardButton("📜 4. Правила и Жалобы", callback_data="faq_rules")
         )
-        bot.send_message(
-            message.chat.id, 
-            "📂 **Выберите интересующий раздел часто задаваемых вопросов:**", 
-            reply_markup=keyboard
-        )
+        bot.send_message(message.chat.id, "📂 **Выберите интересующий раздел часто задаваемых вопросов:**", reply_markup=keyboard)
 
     elif message.text == "📊 Статус сервера":
         status_text = (
             "📊 **Статус серверов проекта BEST RUSSIA:**\n"
             "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-            "🟢 **Основной сервер:** `ОФФЛАЙН`\n"
-            "🛠 **Лаунчер и автообновления:** `Не доступно`\n\n"
+            "🟢 **Основной сервер:** `ONLINE`\n"
+            "🛠 **Лаунчер и автообновления:** `РАБОТАЮТ СТАТИСТИЧЕСКИ`\n\n"
             "🔗 **IP Адрес для подключения:** `play.bestrussia-rp.ru:7777`\n"
-            "💡 _Если вы не можете зайти на сервер, проверьте стабильность вашего интернет-соединения или перезагрузите лаунчер._"
+            "💡 _Если вы не можете зайти на сервер, проверьте лаунчер._"
         )
         bot.send_message(message.chat.id, status_text, parse_mode="Markdown")
 
-    elif message.text == "🌐 Наши resources":
+    elif message.text == "🌐 Наши ресурсы":
         keyboard = types.InlineKeyboardMarkup(row_width=1)
         keyboard.add(
             types.InlineKeyboardButton("📢 Телеграм канал проекта", url="https://t.me/BestRPSueta"),
             types.InlineKeyboardButton("🇷🇺 Официальное сообщество ВК", url="https://vk.ru/bestrussiaonlinerp")
         )
-        bot.send_message(
-            message.chat.id, 
-            "🌐 **Официальные ресурсы проекта BEST RUSSIA:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\nПодписывайтесь, чтобы первыми узнавать о новостях! 👇", 
-            reply_markup=keyboard
-        )
+        bot.send_message(message.chat.id, "🌐 **Официальные ресурсы проекта BEST RUSSIA:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\nПодписывайтесь! 👇", reply_markup=keyboard)
 
 
 # --- ИНЛАЙН ОБРАБОТЧИК ДЛЯ FAQ И ОЦЕНОК ---
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callbacks(call):
-    # Разделы FAQ
     if call.data.startswith("faq_"):
-        section = call.data.split("_")[1]
+        section = call.data.split("_")[-1]
         faq_response = ""
         
         if section == "launcher":
-            faq_response = (
-                "📱 **Проблемы с лаунчером и сборкой:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-                "• **Ошибка 'Файлы повреждены'**: Откройте лаунчер и нажмите кнопку 'Починить игру' в настройках.\n"
-                "• **Белый экран при запуске**: Обновите драйверы видеокарты и установите чистый DirectX.\n"
-                "• **Крашит при заходе**: Удалите сторонние модификации или клео-скрипты, если вы их ставили."
-            )
+            faq_response = "📱 **Проблемы с лаунчером и сборкой:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n• **Ошибка 'Файлы повреждены'**: Нажмите 'Починить игру' в лаунчере.\n• **Крашит при заходе**: Удалите сторонние модификации."
         elif section == "gameplay":
-            faq_response = (
-                "🎮 **Вопросы по игровому процессу:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-                "• **Как устроиться на работу?**: Используйте GPS-навигатор (`/gps`) -> Важные места -> Центр занятости.\n"
-                "• **Где получить права?**: Получить водительские права можно в Автошколе (`/gps` -> Автошкола).\n"
-                "• **Меня забанили/посадили ни за что**: Оставьте официальную жалобу на администратора в нашей группе ВК."
-            )
+            faq_response = "🎮 **Вопросы по игровому процессу:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n• **Как устроиться на работу?**: Используйте `/gps` -> Центр занятости.\n• **Жалобы ни за что**: Оставьте жалобу в нашей группе ВК."
         elif section == "donate":
-            faq_response = (
-                "💳 **Проблемы с донатом и магазином:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-                "• **Донат не пришел в игру**: Платежи обрабатываются до 15 минут. Если время прошло, создайте тикет в этом боте и прикрепите чек.\n"
-                "• **Как активировать донат-код?**: Введите команду `/donate` на сервере в игре и выберите пункт 'Активация'."
-            )
+            faq_response = "💳 **Проблемы с донатом:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n• **Донат не пришел**: Обработка до 15 минут. Если не пришел — создайте тикет здесь."
         elif section == "rules":
-            faq_response = (
-                "📜 **Правила сервера и игровой процесс:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-                "• **Ознакомиться с правилами** можно в закрепленных сообщениях нашего Discord или сообщества ВК.\n"
-                "• **Запрещено**: DM (убийство без причины), DB (убийство машиной), SK (спавн килл), Оскорбление родных.\n"
-                "• Помните, что за серьезные нарушения ваш аккаунт может быть заблокирован навсегда."
-            )
+            faq_response = "📜 **Правила сервера:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n• Ознакомьтесь с правилами в закрепе сообщества ВК.\n• Запрещены: DM, DB, SK, оскорбление родных."
             
         bot.send_message(call.message.chat.id, faq_response, parse_mode="Markdown")
         bot.answer_callback_query(call.id)
 
-    # Выбор категории тикета
-    elif call.data.startswith('cat:'):
-        data_parts = call.data.split(':', 2)
-        category, nickname = data_parts[1], data_parts[2]
+    elif call.data.startswith('cat_'):
+        category = call.data.split('_')[-1]
+        user_id = call.from_user.id
+        
         bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
 
         cat_emoji = "❓"
-        if category == "баг": cat_emoji = "🐛 [БАГ / ОШИБКА]"
-        elif category == "жалоба": cat_emoji = "🦅 [ЖАЛОБА]"
-        elif category == "донат": cat_emoji = "💳 [ДОНАТ]"
-        elif category == "другое": cat_emoji = "💬 [ОБЩИЙ ВОПРОС]"
+        if category == "bug": cat_emoji = "🐛 [БАГ / ОШИБКА]"
+        elif category == "report": cat_emoji = "🦅 [ЖАЛОБА]"
+        elif category == "donate": cat_emoji = "💳 [ДОНАТ]"
+        elif category == "other": cat_emoji = "💬 [ОБЩИЙ ВОПРОС]"
+
+        # Достаем никнейм из временной памяти
+        nickname = user_data_storage.get(user_id, "Не указан")
 
         msg = bot.send_message(
             call.message.chat.id, 
@@ -192,18 +169,11 @@ def handle_callbacks(call):
         bot.register_next_step_handler(msg, process_issue, nickname, cat_emoji)
         bot.answer_callback_query(call.id)
 
-    # Обработка оценки администратора игроком
     elif call.data.startswith('rate:'):
-        stars, admin_id = call.data.split(':')[1], call.data.split(':')[2]
-        # Скрываем кнопки у игрока после нажатия
+        stars, admin_id = call.data.split(':')[1], call.data.split Jules:139:26:
         bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
         bot.send_message(call.message.chat.id, "❤️ Спасибо за вашу оценку! Вы помогаете делать BEST RUSSIA лучше.")
-        
-        # Отправляем лог оценки вам в личку
-        bot.send_message(
-            admin_id, 
-            f"📊 **Новый отзыв о работе администрации!**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n👤 Игрок поставил оценку: {stars} из 5 звёзд! ⭐"
-        )
+        bot.send_message(ADMIN_CHAT_ID, f"📊 **Новый отзыв!**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n👤 Игрок поставил оценку: {stars} из 5 звёзд! ⭐")
         bot.answer_callback_query(call.id)
 
 
@@ -213,7 +183,34 @@ def process_nickname(message):
         send_welcome_menu(message.chat.id, message.from_user.username)
         return
     nickname = message.text
+    user_id = message.from_user.id
     if not nickname or nickname.startswith('/'):
         msg = bot.send_message(message.chat.id, "⚠️ Никнейм не может быть командой. Введите игровой ник:")
         bot.register_next_step_handler(msg, process_nickname)
         return
+
+    # Временно сохраняем ник в память по ID пользователя
+    user_data_storage[user_id] = nickname
+
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    keyboard.add(
+        types.InlineKeyboardButton("🐛 Нашел баг / ошибку", callback_data="cat_bug"),
+        types.InlineKeyboardButton("🦅 Жалоба на игрока/админа", callback_data="cat_report"),
+        types.InlineKeyboardButton("💳 Проблема с донатом", callback_data="cat_donate"),
+        types.InlineKeyboardButton("❓ Другой вопрос", callback_data="cat_other")
+    )
+    bot.send_message(message.chat.id, f"📋 **Шаг 2 из 3:** Отлично, `{nickname}`. Выберите категорию:", parse_mode="Markdown", reply_markup=keyboard)
+
+
+def process_issue(message, nickname, category_title):
+    if message.text == "❌ Отмена":
+        send_welcome_menu(message.chat.id, message.from_user.username)
+        return
+    issue_text = message.text
+    user_id = message.from_user.id
+    if not issue_text or issue_text.startswith('/'):
+        msg = bot.send_message(message.chat.id, "⚠️ Опишите проблему обычным текстом:")
+        bot.register_next_step_handler(msg, process_issue, nickname, category_title)
+        return
+
+    user_cooldowns[user_id] = time.time()
