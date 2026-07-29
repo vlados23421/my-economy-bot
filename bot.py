@@ -349,6 +349,10 @@ def game():
 def index():
     return "Squid Game Bot is running!"
 
+@app.route('/landing')
+def landing():
+    return render_template('landing.html')
+
 @app.route(f"/{BOT_TOKEN}", methods=['POST'])
 def webhook():
     if request.headers.get('content-type') == 'application/json':
