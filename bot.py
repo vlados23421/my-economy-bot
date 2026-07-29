@@ -173,12 +173,5 @@ def webhook():
 
 # ─────────────────────────── ЗАПУСК ───────────────────────────
 if __name__ == "__main__":
-    if WEBHOOK_URL:
-        bot.remove_webhook()
-        bot.set_webhook(url=f"{WEBHOOK_URL}/{BOT_TOKEN}")
-        logger.info(f"Webhook: {WEBHOOK_URL}/{BOT_TOKEN}")
-        app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-    else:
-        bot.remove_webhook()
-        logger.info("Polling mode...")
-        bot.infinity_polling()
+    bot.remove_webhook()
+    bot.infinity_polling()
