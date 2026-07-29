@@ -31,7 +31,7 @@ def webapp_keyboard():
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton(
         "🦑 ИГРАТЬ В SQUID GAME",
-        web_app=types.WebAppInfo(url=f"{WEB_APP_URL}/game")
+        web_app=types.WebAppInfo(url="https://my-economy-bot.onrender.com/game")
     ))
     return markup
 
