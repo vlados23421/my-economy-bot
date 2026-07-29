@@ -16,18 +16,64 @@
             font-family: 'Segoe UI', system-ui, sans-serif;
             min-height: 100vh;
             overflow-x: hidden;
+            position: relative;
+        }
+        
+        /* Фоновые символы Squid Game */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                radial-gradient(circle at 15% 25%, rgba(233,69,96,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 85% 75%, rgba(233,69,96,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(0,200,200,0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        body::after {
+            content: '○ △ □';
+            position: fixed;
+            top: 10px;
+            right: 15px;
+            font-size: 1.5em;
+            color: rgba(233,69,96,0.15);
+            pointer-events: none;
+            z-index: 0;
+            letter-spacing: 8px;
         }
         
         .container {
+            position: relative;
+            z-index: 1;
             padding: 15px;
             max-width: 500px;
             margin: 0 auto;
         }
         
+        /* Логотип с символами */
         .header {
             text-align: center;
-            margin-bottom: 15px;
-            padding-top: 10px;
+            margin-bottom: 20px;
+            padding-top: 15px;
+        }
+        
+        .logo-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .logo-symbols {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: 1.2em;
+            color: #e94560;
+            opacity: 0.8;
         }
         
         .logo {
@@ -60,6 +106,19 @@
             text-align: center;
             margin-bottom: 15px;
             box-shadow: 0 8px 30px rgba(233,69,96,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .balance-card::after {
+            content: '₩';
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 2.5em;
+            color: rgba(233,69,96,0.08);
+            font-weight: bold;
         }
         
         .balance-label {
@@ -177,6 +236,24 @@
             cursor: pointer;
             transition: all 0.3s ease;
             border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(233,69,96,0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .game-card:hover::before {
+            opacity: 1;
         }
         
         .game-card:hover {
@@ -195,6 +272,8 @@
             display: block;
             margin-bottom: 6px;
             animation: float 3s ease-in-out infinite;
+            position: relative;
+            z-index: 1;
         }
         
         .game-card:nth-child(2) .icon { animation-delay: 0.5s; }
@@ -211,11 +290,15 @@
             font-weight: bold;
             color: #fff;
             margin-bottom: 3px;
+            position: relative;
+            z-index: 1;
         }
         
         .game-card .desc {
             font-size: 0.65em;
             color: #888;
+            position: relative;
+            z-index: 1;
         }
         
         .game-card .difficulty {
@@ -225,6 +308,8 @@
             font-size: 0.6em;
             margin-top: 5px;
             font-weight: bold;
+            position: relative;
+            z-index: 1;
         }
         
         .diff-easy { background: #1a4a1a; color: #4ade80; }
@@ -419,15 +504,44 @@
         }
         
         .hidden { display: none !important; }
+        
+        /* Водяной знак с логотипом */
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 0;
+        }
     </style>
 </head>
 <body>
+    <!-- Водяной знак -->
+    <div class="watermark">
+        <svg width="300" height="300" viewBox="0 0 300 300">
+            <circle cx="150" cy="80" r="40" fill="none" stroke="#e94560" stroke-width="8"/>
+            <polygon points="150,150 110,210 190,210" fill="none" stroke="#e94560" stroke-width="8"/>
+            <rect x="110" y="230" width="80" height="60" fill="none" stroke="#e94560" stroke-width="8"/>
+        </svg>
+    </div>
+    
     <div class="container">
         <!-- Главное меню -->
         <div id="menu">
             <div class="header">
-                <div class="logo">SQUID GAME</div>
-                <div class="subtitle">Выживает сильнейший</div>
+                <div class="logo-wrapper">
+                    <div class="logo-symbols">
+                        <span>○</span>
+                        <span>△</span>
+                        <span>□</span>
+                    </div>
+                    <div>
+                        <div class="logo">SQUID GAME</div>
+                        <div class="subtitle">Выживает сильнейший</div>
+                    </div>
+                </div>
             </div>
             
             <div class="balance-card">
@@ -562,7 +676,6 @@
         tg.ready();
         tg.expand();
         
-        // Загрузка новостей с сервера
         let newsData = [];
         
         async function loadNews() {
@@ -837,4 +950,4 @@
         }
     </script>
 </body>
-    </html>
+                            </html>
