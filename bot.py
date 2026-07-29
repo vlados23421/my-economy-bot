@@ -171,7 +171,11 @@ def webhook():
     else:
         abort(403)
 
-# ─────────────────────────── ЗАПУСК ───────────────────────────
 if __name__ == "__main__":
-    bot.remove_webhook()
-    bot.infinity_polling()
+    from threading import Thread
+    
+    # Запускаем polling в отдельном потоке
+    Thread(target=bot.infinity_polling).start()
+    
+    # Запускаем Flask для Web App
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
