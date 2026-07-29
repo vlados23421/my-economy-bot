@@ -8,7 +8,7 @@ from flask import Flask, request, abort
 
 # ─────────────────────────── ПЕРЕМЕННЫЕ ───────────────────────────
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "") or "8992162127:AAH-FF5MtWhahVBeNufUn7KXnQllb9MS-tA"
-ADMIN_CHAT_ID = os.environ.get("8718572838", "")
+ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID", "")
 WEBHOOK_URL = os.environ.get("https://my-economy-bot.onrender.com", "")
 
 SERVER_IP = "188.127.241.74:3635"
