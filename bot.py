@@ -7,7 +7,7 @@ from telebot import types
 from flask import Flask, request, abort
 
 # ─────────────────────────── ПЕРЕМЕННЫЕ ───────────────────────────
-BOT_TOKEN = os.environ.get("8992162127:AAH-FF5MtWhahVBeNufUn7KXnQllb9MS-tA", "")
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "") or "8992162127:AAH-FF5MtWhahVBeNufUn7KXnQllb9MS-tA"
 ADMIN_CHAT_ID = os.environ.get("8718572838", "")
 WEBHOOK_URL = os.environ.get("https://my-economy-bot.onrender.com", "")
 
