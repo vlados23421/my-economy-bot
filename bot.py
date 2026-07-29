@@ -1,34 +1,21 @@
 import os
-import sys
 import logging
 from typing import Dict, Optional
-import datetime
 
 import telebot
 from telebot import types
 from flask import Flask, request, abort
 
-# ─────────────────────────── ПРЯМОЕ ЧТЕНИЕ ПЕРЕМЕННЫХ ───────────────────────────
-BOT_TOKEN = os.environ.get("8992162127:AAH-FF5MtWhahVBeNufUn7KXnQllb9MS-tA")
-ADMIN_CHAT_ID = os.environ.get("8718572838")
-WEBHOOK_URL = os.environ.get("https://my-economy-bot.onrender.com")
+# ─────────────────────────── ПЕРЕМЕННЫЕ ───────────────────────────
+BOT_TOKEN = os.environ.get("8992162127:AAH-FF5MtWhahVBeNufUn7KXnQllb9MS-tA", "")
+ADMIN_CHAT_ID = os.environ.get("8718572838", "")
+WEBHOOK_URL = os.environ.get("https://my-economy-bot.onrender.com", "")
 
-# Отладка
-print(f"DEBUG BOT_TOKEN: {BOT_TOKEN}")
-print(f"DEBUG ADMIN_CHAT_ID: {ADMIN_CHAT_ID}")
-print(f"DEBUG WEBHOOK_URL: {WEBHOOK_URL}")
-
-if not BOT_TOKEN:
-    print("❌ ОШИБКА: BOT_TOKEN не задан!")
-    print("Все переменные окружения:", list(os.environ.keys()))
-    sys.exit(1)
-
-# Серверные константы
 SERVER_IP = "188.127.241.74:3635"
 SERVER_NAME = "BEST RUSSIA"
 DISCORD_LINK = "https://discord.gg/qqHqy3mGg"
 
-# ─────────────────────────── НАСТРОЙКА ЛОГГЕРА ───────────────────────────
+# ─────────────────────────── ЛОГГЕР ───────────────────────────
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -70,18 +57,52 @@ def faq_keyboard():
 
 # ─────────────────────────── ТЕКСТЫ ───────────────────────────
 RULES = {
-    "common": "📜 <b>Общие правила сервера BEST RUSSIA</b>\n\n1. Запрещены читы, трейнеры и любые сторонние программы.\n2. Уважайте других игроков.\n3. Запрещена реклама других проектов.\n4. Запрещено использование багов игры.\n5. Администратор всегда прав.",
-    "rp": "📜 <b>Правила RP (RolePlay)</b>\n\n1. Не выходите из роли (NonRP).\n2. Запрещён PowerGaming (PG) — навязывание действий без возможности ответа.\n3. Запрещён Metagaming (MG) — использование OOC информации в IC.\n4. Соблюдайте реалистичность действий.",
-    "chat": "📜 <b>Правила общения в чатах</b>\n\n1. Запрещён спам и флуд.\n2. Оскорбления и токсичное поведение наказываются.\n3. Запрещено злоупотребление Caps Lock.\n4. Реклама сторонних ресурсов — бан.",
-    "punish": "📜 <b>Система наказаний</b>\n\n1. Предупреждение / Кик\n2. Мут на 30 минут\n3. Бан на 1 день\n4. Перманентный бан",
+    "common": (
+        "📜 <b>Общие правила сервера BEST RUSSIA</b>\n\n"
+        "1. Запрещены читы, трейнеры и любые сторонние программы.\n"
+        "2. Уважайте других игроков.\n"
+        "3. Запрещена реклама других проектов.\n"
+        "4. Запрещено использование багов игры.\n"
+        "5. Администратор всегда прав."
+    ),
+    "rp": (
+        "📜 <b>Правила RP (RolePlay)</b>\n\n"
+        "1. Не выходите из роли (NonRP).\n"
+        "2. Запрещён PowerGaming (PG).\n"
+        "3. Запрещён Metagaming (MG).\n"
+        "4. Соблюдайте реалистичность действий."
+    ),
+    "chat": (
+        "📜 <b>Правила общения в чатах</b>\n\n"
+        "1. Запрещён спам и флуд.\n"
+        "2. Оскорбления и токсичное поведение наказываются.\n"
+        "3. Запрещено злоупотребление Caps Lock.\n"
+        "4. Реклама сторонних ресурсов — бан."
+    ),
+    "punish": (
+        "📜 <b>Система наказаний</b>\n\n"
+        "1. Предупреждение / Кик\n"
+        "2. Мут на 30 минут\n"
+        "3. Бан на 1 день\n"
+        "4. Перманентный бан"
+    ),
 }
 
 FAQ = {
-    "join": f"🌐 Чтобы зайти на сервер, запустите SA-MP, добавьте IP <code>{SERVER_IP}</code> в избранное и подключитесь.",
-    "crash": "🔧 <b>Не заходит в игру / ошибка</b>\n\n- Убедитесь, что установлен SA-MP 0.3.7-R1.\n- Скачайте нашу сборку модов.\n- Проверьте антивирус.\n- Если проблема осталась — обратитесь в техподдержку.",
-    "unban": f"🔓 <b>Как получить разбан?</b>\n\nЗаявки на разбан подаются через Discord.\n{DISCORD_LINK}",
-    "mods": f"📦 <b>Где скачать сборку?</b>\n\nАктуальная сборка в Discord: {DISCORD_LINK}",
-    "progress": "💾 <b>Потерял прогресс / вещи</b>\n\nНапишите в поддержку, указав никнейм и примерную дату.",
+    "join": f"🌐 Чтобы зайти на сервер, запустите наш лаунчер, <code>{SERVER_IP}</code> в избранное и подключитесь.",
+    "crash": (
+        "🔧 <b>Не заходит в игру / ошибка</b>\n\n"
+        "- Установите лаунчер.\n"
+        "- Введите свой никнейм.\n"
+        "- Проверьте антивирус.\n"
+        "- Если проблема осталась — обратитесь в техподдержку."
+    ),
+    "unban": f"🔓 <b>Как получить разбан?</b>\n\nЗаявки на разбан подаются через Discord: {DISCORD_LINK}",
+    "mods": f"📦 <b>Где скачать лаунчер?</b>\n\nАктуальная лаунчер в Discord: {DISCORD_LINK}",
+    "progress": (
+        "💾 <b>Потерял прогресс / вещи</b>\n\n"
+        "Напишите в поддержку, указав никнейм и примерную дату. Мы проверим логи."
+    ),
 }
 
 # ─────────────────────────── ОБРАБОТЧИКИ ───────────────────────────
@@ -90,7 +111,8 @@ def start(message):
     user_states[message.chat.id] = None
     bot.send_message(
         message.chat.id,
-        f"⚡️ Добро пожаловать в бот поддержки сервера <b>{SERVER_NAME}</b>!\nЧем я могу помочь?",
+        f"⚡️ Добро пожаловать в бот поддержки сервера <b>{SERVER_NAME}</b>!\n"
+        "Чем я могу помочь? Выберите раздел ниже:",
         reply_markup=main_keyboard()
     )
 
@@ -100,14 +122,21 @@ def rules_menu(message):
 
 @bot.message_handler(func=lambda m: m.text == "🌐 IP сервера")
 def ip_info(message):
-    bot.send_message(message.chat.id, f"🌍 <b>IP адрес сервера:</b> <code>{SERVER_IP}</code>\n\nДля подключения используйте SA-MP 0.3.7-R1.")
+    bot.send_message(
+        message.chat.id,
+        f"🌍 <b>IP адрес сервера:</b> <code>{SERVER_IP}</code>\n\n"
+        "Для подключения используйте SA-MP 0.3.7-R1."
+    )
 
 @bot.message_handler(func=lambda m: m.text == "📝 Подать жалобу")
 def complaint_start(message):
     user_states[message.chat.id] = 'complaint'
     bot.send_message(
         message.chat.id,
-        "📝 Опишите жалобу: ник нарушителя, что произошло, когда, доказательства.\nДля отмены нажмите /start.",
+        "📝 <b>Подача жалобы на игрока</b>\n\n"
+        "Опишите ситуацию: ник нарушителя, что произошло, когда, приложите доказательства.\n"
+        "Отправьте всё одним сообщением.\n"
+        "Для отмены нажмите /start.",
         reply_markup=remove_kb()
     )
 
@@ -120,7 +149,9 @@ def contact(message):
     user_states[message.chat.id] = 'contact'
     bot.send_message(
         message.chat.id,
-        "📞 Напишите ваш вопрос.\nДля выхода нажмите /start.",
+        "📞 Вы перешли в режим связи с администрацией.\n"
+        "Напишите ваш вопрос, и мы ответим в ближайшее время.\n"
+        "Для выхода нажмите /start.",
         reply_markup=remove_kb()
     )
 
@@ -132,22 +163,28 @@ def process_complaint(message):
         f"📨 <b>Новая жалоба</b>\n"
         f"От: {message.from_user.full_name} (@{message.from_user.username})\n"
         f"ID: <code>{message.chat.id}</code>\n"
-        f"Номер: <b>{complaint_id}</b>\n\n{message.text}"
+        f"Номер: <b>{complaint_id}</b>\n\n"
+        f"{message.text}"
     )
     if ADMIN_CHAT_ID:
         bot.send_message(ADMIN_CHAT_ID, admin_text)
-    bot.send_message(message.chat.id, f"✅ Жалоба №{complaint_id} принята.", reply_markup=main_keyboard())
+    bot.send_message(
+        message.chat.id,
+        f"✅ Ваша жалоба принята (№ {complaint_id}). Администрация рассмотрит её в ближайшее время.",
+        reply_markup=main_keyboard()
+    )
 
 @bot.message_handler(func=lambda m: user_states.get(m.chat.id) == 'contact')
 def forward_contact(message):
     admin_text = (
-        f"📩 <b>Сообщение</b>\n"
+        f"📩 <b>Сообщение от пользователя</b>\n"
         f"От: {message.from_user.full_name} (@{message.from_user.username})\n"
-        f"ID: <code>{message.chat.id}</code>\n\n{message.text}"
+        f"ID: <code>{message.chat.id}</code>\n\n"
+        f"{message.text}"
     )
     if ADMIN_CHAT_ID:
         bot.send_message(ADMIN_CHAT_ID, admin_text)
-    bot.send_message(message.chat.id, "✅ Отправлено администрации. Ожидайте ответа.")
+    bot.send_message(message.chat.id, "✅ Ваше сообщение отправлено администрации. Ожидайте ответа.")
 
 @bot.message_handler(commands=['reply'])
 def admin_reply(message):
@@ -160,25 +197,25 @@ def admin_reply(message):
     user_id, reply_text = parts[1], parts[2]
     try:
         bot.send_message(int(user_id), f"💬 <b>Ответ от администрации {SERVER_NAME}:</b>\n{reply_text}")
-        bot.send_message(message.chat.id, f"✅ Отправлено пользователю {user_id}")
+        bot.send_message(message.chat.id, f"✅ Ответ отправлен пользователю {user_id}")
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
+        bot.send_message(message.chat.id, f"❌ Ошибка при отправке: {e}")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("rules_"))
 def rules_callback(call):
     key = call.data.replace("rules_", "")
     bot.answer_callback_query(call.id)
-    bot.send_message(call.message.chat.id, RULES.get(key, "Не найдено."))
+    bot.send_message(call.message.chat.id, RULES.get(key, "Раздел не найден."))
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("faq_"))
 def faq_callback(call):
     key = call.data.replace("faq_", "")
     bot.answer_callback_query(call.id)
-    bot.send_message(call.message.chat.id, FAQ.get(key, "Не найдено."))
+    bot.send_message(call.message.chat.id, FAQ.get(key, "Ответ не найден."))
 
 @bot.message_handler(func=lambda m: True)
 def fallback(message):
-    bot.send_message(message.chat.id, "Используйте кнопки меню или /start")
+    bot.send_message(message.chat.id, "Используйте кнопки меню или нажмите /start для возврата в главное меню.")
 
 # ─────────────────────────── FLASK ───────────────────────────
 app = Flask(__name__)
@@ -202,9 +239,9 @@ if __name__ == "__main__":
     if WEBHOOK_URL:
         bot.remove_webhook()
         bot.set_webhook(url=f"{WEBHOOK_URL}/{BOT_TOKEN}")
-        logger.info(f"Webhook: {WEBHOOK_URL}/{BOT_TOKEN}")
+        logger.info(f"Webhook установлен: {WEBHOOK_URL}/{BOT_TOKEN}")
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
     else:
         bot.remove_webhook()
-        logger.info("Polling mode...")
+        logger.info("Запуск в режиме polling...")
         bot.infinity_polling()
