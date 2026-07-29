@@ -125,7 +125,7 @@ def ip_info(message):
     bot.send_message(
         message.chat.id,
         f"🌍 <b>IP адрес сервера:</b> <code>{SERVER_IP}</code>\n\n"
-        "Для подключения используйте SA-MP 0.3.7-R1."
+        "Для подключения используйте лаунчер."
     )
 
 @bot.message_handler(func=lambda m: m.text == "📝 Подать жалобу")
