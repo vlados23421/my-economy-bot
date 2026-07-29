@@ -10,26 +10,27 @@ from telebot import types
 from flask import Flask, request, abort
 
 # ─────────────────────────── Конфигурация ───────────────────────────
-@dataclass
+# ─────────────────────────── Конфигурация ───────────────────────────
 class Config:
     """Централизованные настройки приложения."""
-    BOT_TOKEN: str = os.environ.get("8992162127:AAH-FF5MtWhahVBeNufUn7KXnQllb9MS-tA", "")
-    ADMIN_CHAT_ID: str = os.environ.get("8718572838", "")
-    WEBHOOK_URL: str = os.environ.get("https://my-economy-bot.onrender.com", "")
+    def __init__(self):
+        self.BOT_TOKEN = os.environ.get("8992162127:AAH-FF5MtWhahVBeNufUn7KXnQllb9MS-tA")
+        self.ADMIN_CHAT_ID = os.environ.get("8718572838")
+        self.WEBHOOK_URL = os.environ.get("https://my-economy-bot.onrender.com")
 
-    # Серверные константы
-    SERVER_IP: str = "188.127.241.74:3635"
-    SERVER_NAME: str = "BEST RUSSIA"
-    DISCORD_LINK: str = "https://discord.gg/qqHqy3mGg"
-    VK_LINK: str = "https://vk.ru/bestrussiaonlinerp"
+        # Серверные константы
+        self.SERVER_IP = "188.127.241.74:3635"
+        self.SERVER_NAME = "BEST RUSSIA"
+        self.DISCORD_LINK = "https://discord.gg/qqHqy3mGg"
+        self.VK_LINK = "https://vk.ru/bestrussiaonlinerp"
 
-    # Проверка обязательных переменных
-    def __post_init__(self):
+        # Проверка
+        print(f"DEBUG: BOT_TOKEN = {self.BOT_TOKEN[:15] if self.BOT_TOKEN else 'НЕ ЗАДАН'}")
+        print(f"DEBUG: ADMIN_CHAT_ID = {self.ADMIN_CHAT_ID if self.ADMIN_CHAT_ID else 'НЕ ЗАДАН'}")
+        print(f"DEBUG: WEBHOOK_URL = {self.WEBHOOK_URL if self.WEBHOOK_URL else 'НЕ ЗАДАН'}")
+
         if not self.BOT_TOKEN:
-            logging.critical("BOT_TOKEN не задан!")
-            sys.exit(1)
-        if not self.ADMIN_CHAT_ID:
-            logging.warning("ADMIN_CHAT_ID не задан — административные уведомления не будут отправляться.")
+            raise ValueError("BOT_TOKEN не найден в переменных окружения!")
 
 config = Config()
 
