@@ -2,360 +2,758 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>🦑 Squid Game</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
-            background: #1a1a2e;
+            background: linear-gradient(180deg, #0d0d2b 0%, #1a1a3e 50%, #0d0d2b 100%);
             color: white;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             min-height: 100vh;
-            padding: 20px;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            padding: 15px;
+            max-width: 500px;
+            margin: 0 auto;
         }
         
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 15px;
+            padding-top: 10px;
         }
         
-        .header h1 {
-            font-size: 2.5em;
-            color: #e94560;
-            text-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+        .logo {
+            font-size: 2.2em;
+            font-weight: 900;
+            letter-spacing: 3px;
+            background: linear-gradient(135deg, #e94560, #ff6b81, #e94560);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: glow 2s ease-in-out infinite;
         }
         
-        .balance {
-            background: linear-gradient(135deg, #e94560, #0f3460);
-            padding: 15px 30px;
+        @keyframes glow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.3); }
+        }
+        
+        .subtitle {
+            font-size: 0.8em;
+            color: #aaa;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+        
+        .balance-card {
+            background: linear-gradient(135deg, #1e1e4a, #2a1a3e);
+            border: 2px solid #e94560;
             border-radius: 20px;
+            padding: 14px 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            box-shadow: 0 8px 30px rgba(233,69,96,0.2);
+        }
+        
+        .balance-label {
+            font-size: 0.75em;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        
+        .balance-amount {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #ff6b81;
+        }
+        
+        .news-section {
+            margin-bottom: 18px;
+        }
+        
+        .section-title {
+            font-size: 0.85em;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 10px;
+            padding-left: 5px;
+        }
+        
+        .news-scroll {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 5px;
+        }
+        
+        .news-scroll::-webkit-scrollbar {
+            height: 4px;
+        }
+        
+        .news-scroll::-webkit-scrollbar-thumb {
+            background: #e94560;
+            border-radius: 4px;
+        }
+        
+        .news-card {
+            min-width: 250px;
+            background: linear-gradient(135deg, #1e1e4a, #16213e);
+            border-radius: 15px;
+            padding: 14px;
+            scroll-snap-align: start;
+            border: 2px solid #2a2a5a;
+            flex-shrink: 0;
+        }
+        
+        .news-card.featured {
+            border-color: #e94560;
+            background: linear-gradient(135deg, #2a1a3e, #1e1e4a);
+            box-shadow: 0 5px 20px rgba(233,69,96,0.2);
+        }
+        
+        .news-card .news-tag {
             display: inline-block;
-            font-size: 1.2em;
-            margin: 10px 0;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.65em;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .tag-event { background: #e94560; color: white; }
+        .tag-promo { background: #f59e0b; color: black; }
+        .tag-update { background: #3b82f6; color: white; }
+        .tag-hot { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .news-card .news-title {
+            font-size: 0.95em;
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: #fff;
+        }
+        
+        .news-card .news-desc {
+            font-size: 0.75em;
+            color: #aaa;
+            line-height: 1.4;
+        }
+        
+        .news-card .news-date {
+            font-size: 0.65em;
+            color: #666;
+            margin-top: 8px;
         }
         
         .games-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 20px;
+            gap: 10px;
+            margin-bottom: 15px;
         }
         
         .game-card {
-            background: #16213e;
-            border-radius: 15px;
-            padding: 20px;
+            background: linear-gradient(180deg, #1e1e4a, #16213e);
+            border-radius: 16px;
+            padding: 16px 10px;
             text-align: center;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            border: 2px solid #0f3460;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .game-card:hover {
+            border-color: #e94560;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(233,69,96,0.3);
         }
         
         .game-card:active {
             transform: scale(0.95);
-            box-shadow: 0 0 30px rgba(233, 69, 96, 0.5);
-            border-color: #e94560;
-        }
-        
-        .game-card .emoji {
-            font-size: 3em;
-            display: block;
-            margin-bottom: 10px;
-        }
-        
-        .game-card .title {
-            font-size: 1.1em;
-            font-weight: bold;
-            color: #e94560;
-        }
-        
-        .game-card .desc {
-            font-size: 0.8em;
-            color: #aaa;
-            margin-top: 5px;
-        }
-        
-        /* RLGL Game */
-        .rlgl-container {
-            text-align: center;
-            padding: 20px;
-        }
-        
-        .doll {
-            font-size: 5em;
-            margin: 20px 0;
             transition: transform 0.1s;
         }
         
-        .doll.turned { transform: rotate(180deg); }
-        
-        .light {
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
-            margin: 20px auto;
-            transition: background 0.3s;
+        .game-card .icon {
+            font-size: 2.8em;
+            display: block;
+            margin-bottom: 6px;
+            animation: float 3s ease-in-out infinite;
         }
         
-        .light.green { background: radial-gradient(circle, #00ff88, #004422); box-shadow: 0 0 50px #00ff88; }
-        .light.red { background: radial-gradient(circle, #ff4444, #440000); box-shadow: 0 0 50px #ff4444; }
+        .game-card:nth-child(2) .icon { animation-delay: 0.5s; }
+        .game-card:nth-child(3) .icon { animation-delay: 1s; }
+        .game-card:nth-child(4) .icon { animation-delay: 1.5s; }
         
-        .btn {
-            background: #e94560;
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            border-radius: 30px;
-            font-size: 1.2em;
-            cursor: pointer;
-            transition: transform 0.2s;
-            margin: 10px;
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
         }
         
-        .btn:active { transform: scale(0.9); }
-        .btn:disabled { background: #555; }
+        .game-card .title {
+            font-size: 0.8em;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 3px;
+        }
         
-        .score {
-            font-size: 2em;
-            margin: 20px 0;
+        .game-card .desc {
+            font-size: 0.65em;
+            color: #888;
+        }
+        
+        .game-card .difficulty {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.6em;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+        
+        .diff-easy { background: #1a4a1a; color: #4ade80; }
+        .diff-medium { background: #4a3a1a; color: #facc15; }
+        .diff-hard { background: #4a1a1a; color: #f87171; }
+        
+        .bonus-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .bonus-item {
+            flex: 1;
+            min-width: 100px;
+            background: linear-gradient(135deg, #1e1e4a, #16213e);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #2a2a5a;
+        }
+        
+        .bonus-item .bonus-icon {
+            font-size: 1.5em;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .bonus-item .bonus-value {
+            font-size: 1em;
+            font-weight: bold;
+            color: #ff6b81;
+        }
+        
+        .bonus-item .bonus-label {
+            font-size: 0.6em;
+            color: #888;
+            text-transform: uppercase;
+        }
+        
+        .game-screen {
+            display: none;
+            text-align: center;
+            padding: 10px;
+        }
+        
+        .game-screen.active {
+            display: block;
         }
         
         .back-btn {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: #333;
+            display: inline-block;
+            padding: 8px 18px;
+            background: rgba(255,255,255,0.1);
             color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 20px;
             cursor: pointer;
+            margin-bottom: 15px;
+            font-size: 0.85em;
+            transition: all 0.3s;
         }
         
-        .hidden { display: none; }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+        
+        .game-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #e94560;
+        }
+        
+        .game-area {
+            background: linear-gradient(180deg, #1e1e4a, #16213e);
+            border-radius: 20px;
+            padding: 20px;
+            margin: 12px 0;
+            border: 2px solid #2a2a5a;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .game-icon {
+            font-size: 4em;
+            margin: 10px 0;
+            transition: all 0.3s;
+        }
+        
+        .game-icon.shake {
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        .status-text {
+            font-size: 1em;
+            margin: 8px 0;
+            min-height: 22px;
+            color: #ccc;
+        }
+        
+        .score-text {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #ff6b81;
+            margin: 8px 0;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 0.95em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn:active { transform: scale(0.9); transition: transform 0.1s; }
+        
+        .btn-primary { background: linear-gradient(135deg, #e94560, #ff6b81); color: white; box-shadow: 0 4px 15px rgba(233,69,96,0.4); }
+        .btn-green { background: linear-gradient(135deg, #22c55e, #4ade80); color: white; box-shadow: 0 4px 15px rgba(34,197,94,0.4); }
+        .btn-red { background: linear-gradient(135deg, #ef4444, #f87171); color: white; box-shadow: 0 4px 15px rgba(239,68,68,0.4); }
+        .btn-outline { background: transparent; border: 2px solid #e94560; color: #e94560; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .btn-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+        
+        .traffic-light {
+            width: 100px; height: 100px;
+            border-radius: 50%;
+            margin: 15px auto;
+            transition: all 0.3s ease;
+        }
+        
+        .traffic-light.green { background: radial-gradient(circle, #4ade80, #166534); box-shadow: 0 0 50px #4ade80, 0 0 100px #22c55e; }
+        .traffic-light.red { background: radial-gradient(circle, #ef4444, #7f1d1d); box-shadow: 0 0 50px #ef4444, 0 0 100px #dc2626; }
+        
+        .progress-bar {
+            width: 100%; height: 16px;
+            background: #1a1a3e;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 12px 0;
+            border: 1px solid #2a2a5a;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e94560, #ff6b81);
+            transition: width 0.1s;
+            border-radius: 8px;
+        }
+        
+        .guess-input {
+            background: #1a1a3e;
+            border: 2px solid #e94560;
+            color: white;
+            padding: 10px;
+            font-size: 1.1em;
+            width: 110px;
+            text-align: center;
+            border-radius: 12px;
+            outline: none;
+            margin: 8px;
+        }
+        
+        .guess-input:focus { border-color: #ff6b81; box-shadow: 0 0 15px rgba(233,69,96,0.3); }
+        
+        @keyframes confetti {
+            0% { transform: translateY(0) rotate(0); opacity: 1; }
+            100% { transform: translateY(-180px) rotate(720deg); opacity: 0; }
+        }
+        
+        .confetti {
+            position: fixed;
+            font-size: 1.8em;
+            animation: confetti 1.5s ease-out forwards;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <div id="menu">
-        <div class="header">
-            <h1>🦑 SQUID GAME</h1>
-            <div class="balance">💰 <span id="coins">0</span> монет</div>
+    <div class="container">
+        <!-- Главное меню -->
+        <div id="menu">
+            <div class="header">
+                <div class="logo">SQUID GAME</div>
+                <div class="subtitle">Выживает сильнейший</div>
+            </div>
+            
+            <div class="balance-card">
+                <div class="balance-label">Баланс</div>
+                <div class="balance-amount">💰 <span id="coins">0</span> монет</div>
+            </div>
+            
+            <!-- Новости -->
+            <div class="news-section">
+                <div class="section-title">📰 Новости и акции</div>
+                <div class="news-scroll" id="news-container">
+                    <div class="news-card">
+                        <div class="news-desc" style="text-align:center;color:#888;">Загрузка новостей...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Бонусы -->
+            <div class="bonus-bar">
+                <div class="bonus-item">
+                    <span class="bonus-icon">🔥</span>
+                    <div class="bonus-value">x2</div>
+                    <div class="bonus-label">Опыт</div>
+                </div>
+                <div class="bonus-item">
+                    <span class="bonus-icon">🎁</span>
+                    <div class="bonus-value">+50</div>
+                    <div class="bonus-label">За друга</div>
+                </div>
+                <div class="bonus-item">
+                    <span class="bonus-icon">💎</span>
+                    <div class="bonus-value">VIP</div>
+                    <div class="bonus-label">Топ-10</div>
+                </div>
+            </div>
+            
+            <!-- Игры -->
+            <div class="section-title">🎮 Мини-игры</div>
+            <div class="games-grid">
+                <div class="game-card" onclick="startGame('rlgl')">
+                    <span class="icon">🟢</span>
+                    <span class="title">Красный свет — Зелёный свет</span>
+                    <span class="desc">Не двигайся на красный!</span>
+                    <span class="difficulty diff-medium">Средне</span>
+                </div>
+                
+                <div class="game-card" onclick="startGame('honeycomb')">
+                    <span class="icon">🍬</span>
+                    <span class="title">Сахарные соты</span>
+                    <span class="desc">Вырежи фигуру</span>
+                    <span class="difficulty diff-hard">Сложно</span>
+                </div>
+                
+                <div class="game-card" onclick="startGame('dice')">
+                    <span class="icon">🎲</span>
+                    <span class="title">Кости</span>
+                    <span class="desc">Чёт или нечет?</span>
+                    <span class="difficulty diff-easy">Легко</span>
+                </div>
+                
+                <div class="game-card" onclick="startGame('guess')">
+                    <span class="icon">🔢</span>
+                    <span class="title">Угадай число</span>
+                    <span class="desc">1 до 100</span>
+                    <span class="difficulty diff-medium">Средне</span>
+                </div>
+            </div>
         </div>
         
-        <div class="games-grid">
-            <div class="game-card" onclick="startRLGL()">
-                <span class="emoji">🟢</span>
-                <span class="title">Красный свет — Зелёный свет</span>
-                <span class="desc">Не двигайся на красный!</span>
+        <!-- Игра: Красный свет - Зелёный свет -->
+        <div id="game-rlgl" class="game-screen">
+            <button class="back-btn" onclick="backToMenu()">← Назад</button>
+            <div class="game-title">🟢 Красный свет — Зелёный свет</div>
+            <div class="game-area">
+                <div class="game-icon" id="rlgl-doll">🦑</div>
+                <div class="traffic-light green" id="traffic-light"></div>
+                <div class="status-text" id="rlgl-status">Жми "БЕЖАТЬ" на зелёный!</div>
+                <div class="score-text">Очки: <span id="rlgl-score">0</span></div>
             </div>
-            
-            <div class="game-card" onclick="startHoneycomb()">
-                <span class="emoji">🍬</span>
-                <span class="title">Сахарные соты</span>
-                <span class="desc">Вырежи фигуру</span>
+            <button class="btn btn-primary" id="rlgl-btn" onclick="rlglMove()">🏃 БЕЖАТЬ!</button>
+        </div>
+        
+        <!-- Игра: Сахарные соты -->
+        <div id="game-honeycomb" class="game-screen">
+            <button class="back-btn" onclick="backToMenu()">← Назад</button>
+            <div class="game-title">🍬 Сахарные соты</div>
+            <div class="game-area">
+                <div class="game-icon">🍬</div>
+                <div class="status-text" id="honeycomb-status">Аккуратно вырезайте!</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="honeycomb-fill" style="width: 0%"></div>
+                </div>
+                <div class="score-text">Прогресс: <span id="honeycomb-progress">0</span>%</div>
             </div>
-            
-            <div class="game-card" onclick="startDice()">
-                <span class="emoji">🎲</span>
-                <span class="title">Кости</span>
-                <span class="desc">Чёт или нечет?</span>
-            </div>
-            
-            <div class="game-card" onclick="startGuess()">
-                <span class="emoji">🔢</span>
-                <span class="title">Угадай число</span>
-                <span class="desc">1 до 100</span>
+            <div class="btn-row">
+                <button class="btn btn-green" id="cut-start" onclick="startCut()">🔪 РЕЗАТЬ</button>
+                <button class="btn btn-red hidden" id="cut-stop" onclick="stopCut()">✋ СТОП</button>
             </div>
         </div>
-    </div>
-    
-    <!-- RLGL Game -->
-    <div id="rlgl-game" class="rlgl-container hidden">
-        <button class="back-btn" onclick="backToMenu()">← Назад</button>
-        <h2>🟢 Красный свет — Зелёный свет</h2>
-        <div class="doll" id="doll">🦑</div>
-        <div class="light green" id="light"></div>
-        <div class="score">Очки: <span id="rlgl-score">0</span></div>
-        <button class="btn" id="move-btn" onclick="move()">ДВИГАТЬСЯ!</button>
-        <p id="rlgl-status"></p>
-    </div>
-    
-    <!-- Honeycomb Game -->
-    <div id="honeycomb-game" class="rlgl-container hidden">
-        <button class="back-btn" onclick="backToMenu()">← Назад</button>
-        <h2>🍬 Сахарные соты</h2>
-        <p>Аккуратно вырезайте фигуру!</p>
-        <div style="font-size: 5em; margin: 20px 0;">🍬</div>
-        <div class="score">Прогресс: <span id="honeycomb-progress">0</span>%</div>
-        <button class="btn" id="cut-btn" onclick="cut()">РЕЗАТЬ</button>
-        <button class="btn hidden" id="stop-btn" onclick="stopCut()">СТОП</button>
-        <p id="honeycomb-status"></p>
-    </div>
-    
-    <!-- Dice Game -->
-    <div id="dice-game" class="rlgl-container hidden">
-        <button class="back-btn" onclick="backToMenu()">← Назад</button>
-        <h2>🎲 Кости</h2>
-        <div style="font-size: 5em; margin: 20px 0;" id="dice-result">🎲</div>
-        <div class="score">Ставка: <span id="dice-bet">10</span> монет</div>
-        <button class="btn" onclick="bet('even')">ЧЁТ</button>
-        <button class="btn" onclick="bet('odd')">НЕЧЕТ</button>
-        <p id="dice-status"></p>
-    </div>
-    
-    <!-- Guess Game -->
-    <div id="guess-game" class="rlgl-container hidden">
-        <button class="back-btn" onclick="backToMenu()">← Назад</button>
-        <h2>🔢 Угадай число</h2>
-        <p>Я загадал число от 1 до 100</p>
-        <div style="font-size: 5em; margin: 20px 0;">🤔</div>
-        <input type="number" id="guess-input" min="1" max="100" style="padding: 10px; font-size: 1.2em; width: 100px; text-align: center;">
-        <br>
-        <button class="btn" onclick="guess()">УГАДАТЬ</button>
-        <p id="guess-status"></p>
-        <p>Попыток: <span id="guess-attempts">0</span>/7</p>
+        
+        <!-- Игра: Кости -->
+        <div id="game-dice" class="game-screen">
+            <button class="back-btn" onclick="backToMenu()">← Назад</button>
+            <div class="game-title">🎲 Кости</div>
+            <div class="game-area">
+                <div class="game-icon" id="dice-icon">🎲</div>
+                <div class="status-text" id="dice-status">Угадайте чёт или нечет!</div>
+                <div class="score-text">Ставка: <span id="dice-bet">10</span> монет</div>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-green" onclick="betDice('even')">🟢 ЧЁТ</button>
+                <button class="btn btn-red" onclick="betDice('odd')">🔴 НЕЧЕТ</button>
+            </div>
+        </div>
+        
+        <!-- Игра: Угадай число -->
+        <div id="game-guess" class="game-screen">
+            <button class="back-btn" onclick="backToMenu()">← Назад</button>
+            <div class="game-title">🔢 Угадай число</div>
+            <div class="game-area">
+                <div class="game-icon">🤔</div>
+                <div class="status-text" id="guess-status">Я загадал число от 1 до 100</div>
+                <input type="number" class="guess-input" id="guess-input" min="1" max="100" placeholder="Число">
+                <div class="score-text">Попыток: <span id="guess-attempts">0</span>/7</div>
+            </div>
+            <button class="btn btn-primary" onclick="makeGuess()">🎯 УГАДАТЬ</button>
+        </div>
     </div>
     
     <script>
         const tg = window.Telegram.WebApp;
-        let coins = 0;
-        let rlglScore = 0;
-        let rlglActive = true;
-        let honeycombProgress = 0;
-        let honeycombActive = false;
-        let cutting = false;
-        let guessNumber = 0;
-        let guessAttempts = 0;
-        
-        // Инициализация
         tg.ready();
         tg.expand();
         
-        function backToMenu() {
-            document.querySelectorAll('[id$="-game"]').forEach(el => el.classList.add('hidden'));
-            document.getElementById('menu').classList.remove('hidden');
-            rlglActive = false;
-            honeycombActive = false;
-            cutting = false;
+        // Загрузка новостей с сервера
+        let newsData = [];
+        
+        async function loadNews() {
+            try {
+                const response = await fetch('/api/news');
+                newsData = await response.json();
+                renderNews();
+            } catch (e) {
+                console.log('Новости загружены из кэша');
+            }
         }
         
-        function sendResult(game, score, reward) {
-            tg.sendData(JSON.stringify({
-                game: game,
-                score: score,
-                reward: reward
-            }));
+        function renderNews() {
+            const container = document.getElementById('news-container');
+            if (!container || !newsData.length) return;
+            
+            container.innerHTML = newsData.map(n => `
+                <div class="news-card ${n.featured ? 'featured' : ''}">
+                    <span class="news-tag ${n.tag}">${n.tag_text}</span>
+                    <div class="news-title">${n.title}</div>
+                    <div class="news-desc">${n.description}</div>
+                    <div class="news-date">${n.date}</div>
+                </div>
+            `).join('');
+        }
+        
+        loadNews();
+        
+        let coins = parseInt(localStorage.getItem('squid_coins') || '0');
+        updateCoinsDisplay();
+        
+        let rlglScore = 0, rlglActive = false;
+        let honeycombProgress = 0, honeycombActive = false, cutting = false, cutInterval = null;
+        let guessNumber = 0, guessAttempts = 0;
+        
+        function updateCoinsDisplay() {
+            document.getElementById('coins').textContent = coins;
+            localStorage.setItem('squid_coins', coins.toString());
         }
         
         function addCoins(amount) {
             coins += amount;
-            document.getElementById('coins').textContent = coins;
+            updateCoinsDisplay();
         }
         
-        // RLGL Game
-        function startRLGL() {
+        function sendResult(game, score, reward) {
+            tg.sendData(JSON.stringify({ game, score, reward }));
+        }
+        
+        function showConfetti() {
+            const emojis = ['🎉', '🎊', '💰', '⭐', '💎', '🏆'];
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.top = '80%';
+                    document.body.appendChild(confetti);
+                    setTimeout(() => confetti.remove(), 1500);
+                }, i * 80);
+            }
+        }
+        
+        function startGame(game) {
             document.getElementById('menu').classList.add('hidden');
-            document.getElementById('rlgl-game').classList.remove('hidden');
-            rlglScore = 0;
-            rlglActive = true;
-            document.getElementById('rlgl-score').textContent = '0';
-            document.getElementById('rlgl-status').textContent = '';
-            document.getElementById('move-btn').disabled = false;
-            startRLGLRound();
+            document.querySelectorAll('.game-screen').forEach(el => el.classList.remove('active'));
+            
+            switch(game) {
+                case 'rlgl': document.getElementById('game-rlgl').classList.add('active'); initRLGL(); break;
+                case 'honeycomb': document.getElementById('game-honeycomb').classList.add('active'); initHoneycomb(); break;
+                case 'dice': document.getElementById('game-dice').classList.add('active'); initDice(); break;
+                case 'guess': document.getElementById('game-guess').classList.add('active'); initGuess(); break;
+            }
         }
         
-        function startRLGLRound() {
+        function backToMenu() {
+            rlglActive = false; honeycombActive = false; cutting = false;
+            if (cutInterval) clearInterval(cutInterval);
+            document.querySelectorAll('.game-screen').forEach(el => el.classList.remove('active'));
+            document.getElementById('menu').classList.remove('hidden');
+        }
+        
+        // RLGL
+        function initRLGL() {
+            rlglScore = 0; rlglActive = true;
+            document.getElementById('rlgl-score').textContent = '0';
+            document.getElementById('rlgl-status').textContent = 'Жми "БЕЖАТЬ" на зелёный!';
+            document.getElementById('rlgl-btn').disabled = false;
+            document.getElementById('rlgl-btn').textContent = '🏃 БЕЖАТЬ!';
+            document.getElementById('rlgl-btn').className = 'btn btn-primary';
+            rlglRound();
+        }
+        
+        function rlglRound() {
             if (!rlglActive) return;
-            
-            const light = document.getElementById('light');
-            const doll = document.getElementById('doll');
+            const light = document.getElementById('traffic-light');
             const isGreen = Math.random() > 0.4;
             
             if (isGreen) {
-                light.className = 'light green';
-                doll.classList.remove('turned');
-                document.getElementById('rlgl-status').textContent = '🟢 ЗЕЛЁНЫЙ СВЕТ!';
-                document.getElementById('move-btn').disabled = false;
-                setTimeout(startRLGLRound, 2000);
+                light.className = 'traffic-light green';
+                document.getElementById('rlgl-status').textContent = '🟢 ЗЕЛЁНЫЙ СВЕТ! БЕГИ!';
+                document.getElementById('rlgl-btn').disabled = false;
+                document.getElementById('rlgl-btn').textContent = '🏃 БЕЖАТЬ!';
+                document.getElementById('rlgl-btn').className = 'btn btn-green';
+                setTimeout(rlglRound, 1800);
             } else {
-                light.className = 'light red';
-                doll.classList.add('turned');
-                document.getElementById('rlgl-status').textContent = '🔴 КРАСНЫЙ СВЕТ!';
-                document.getElementById('move-btn').disabled = true;
+                light.className = 'traffic-light red';
+                document.getElementById('rlgl-status').textContent = '🔴 КРАСНЫЙ СВЕТ! ЗАМРИ!';
+                document.getElementById('rlgl-btn').disabled = true;
+                document.getElementById('rlgl-btn').textContent = '🚫 СТОЙ!';
+                document.getElementById('rlgl-btn').className = 'btn btn-red';
                 setTimeout(() => {
-                    document.getElementById('move-btn').disabled = false;
-                    document.getElementById('rlgl-status').textContent = '';
-                    startRLGLRound();
+                    if (!rlglActive) return;
+                    document.getElementById('rlgl-btn').disabled = false;
+                    document.getElementById('rlgl-btn').textContent = '🏃 БЕЖАТЬ!';
+                    document.getElementById('rlgl-btn').className = 'btn btn-primary';
+                    document.getElementById('rlgl-status').textContent = 'Жми "БЕЖАТЬ" на зелёный!';
+                    rlglRound();
                 }, 1500);
             }
         }
         
-        function move() {
-            const light = document.getElementById('light');
+        function rlglMove() {
+            const light = document.getElementById('traffic-light');
             if (light.classList.contains('red')) {
-                // Поймали!
                 rlglActive = false;
-                document.getElementById('rlgl-status').textContent = '💀 ВЫ УБИТЫ!';
-                document.getElementById('move-btn').disabled = true;
-                const reward = rlglScore * 2;
+                document.getElementById('rlgl-doll').classList.add('shake');
+                document.getElementById('rlgl-status').textContent = '💀 ТЫ УБИТ!';
+                document.getElementById('rlgl-btn').disabled = true;
+                const reward = Math.floor(rlglScore / 2);
                 addCoins(reward);
                 sendResult('Красный свет — Зелёный свет', rlglScore, reward);
                 setTimeout(backToMenu, 2000);
             } else {
                 rlglScore += 10;
                 document.getElementById('rlgl-score').textContent = rlglScore;
+                if (rlglScore >= 100) {
+                    rlglActive = false;
+                    document.getElementById('rlgl-status').textContent = '🏆 ТЫ ВЫЖИЛ!';
+                    document.getElementById('rlgl-btn').disabled = true;
+                    const reward = rlglScore * 2;
+                    addCoins(reward);
+                    showConfetti();
+                    sendResult('Красный свет — Зелёный свет', rlglScore, reward);
+                    setTimeout(backToMenu, 2000);
+                }
             }
         }
         
-        // Honeycomb Game
-        function startHoneycomb() {
-            document.getElementById('menu').classList.add('hidden');
-            document.getElementById('honeycomb-game').classList.remove('hidden');
-            honeycombProgress = 0;
-            honeycombActive = true;
-            cutting = false;
+        // Honeycomb
+        function initHoneycomb() {
+            honeycombProgress = 0; honeycombActive = true; cutting = false;
+            document.getElementById('honeycomb-fill').style.width = '0%';
             document.getElementById('honeycomb-progress').textContent = '0';
-            document.getElementById('honeycomb-status').textContent = '';
-            document.getElementById('cut-btn').classList.remove('hidden');
-            document.getElementById('stop-btn').classList.add('hidden');
+            document.getElementById('honeycomb-status').textContent = 'Аккуратно вырезайте!';
+            document.getElementById('cut-start').classList.remove('hidden');
+            document.getElementById('cut-stop').classList.add('hidden');
         }
         
-        function cut() {
+        function startCut() {
             if (!honeycombActive) return;
             cutting = true;
-            document.getElementById('cut-btn').classList.add('hidden');
-            document.getElementById('stop-btn').classList.remove('hidden');
+            document.getElementById('cut-start').classList.add('hidden');
+            document.getElementById('cut-stop').classList.remove('hidden');
             document.getElementById('honeycomb-status').textContent = '🔪 Режем...';
             
-            const cutInterval = setInterval(() => {
-                if (!cutting || !honeycombActive) {
-                    clearInterval(cutInterval);
-                    return;
-                }
-                honeycombProgress += Math.random() * 5 + 2;
+            cutInterval = setInterval(() => {
+                if (!cutting || !honeycombActive) { clearInterval(cutInterval); return; }
+                honeycombProgress += Math.random() * 4 + 1;
+                
                 if (honeycombProgress >= 100) {
-                    honeycombProgress = 100;
-                    honeycombActive = false;
+                    honeycombProgress = 100; honeycombActive = false;
                     clearInterval(cutInterval);
+                    document.getElementById('honeycomb-fill').style.width = '100%';
                     document.getElementById('honeycomb-progress').textContent = '100';
-                    document.getElementById('honeycomb-status').textContent = '✅ УСПЕШНО!';
-                    const reward = 100;
-                    addCoins(reward);
-                    sendResult('Сахарные соты', 100, reward);
-                    document.getElementById('stop-btn').classList.add('hidden');
+                    document.getElementById('honeycomb-status').textContent = '✅ УСПЕШНО! +100 монет!';
+                    document.getElementById('cut-stop').classList.add('hidden');
+                    addCoins(100); showConfetti();
+                    sendResult('Сахарные соты', 100, 100);
                     setTimeout(backToMenu, 2000);
                 }
+                
+                document.getElementById('honeycomb-fill').style.width = honeycombProgress + '%';
                 document.getElementById('honeycomb-progress').textContent = Math.floor(honeycombProgress);
                 
-                // Случайный шанс сломать
-                if (Math.random() < 0.15 && honeycombProgress < 100) {
+                if (Math.random() < 0.12 && honeycombProgress < 100) {
                     clearInterval(cutInterval);
-                    honeycombActive = false;
-                    cutting = false;
+                    honeycombActive = false; cutting = false;
                     document.getElementById('honeycomb-status').textContent = '💥 СОТЫ СЛОМАНЫ!';
-                    document.getElementById('stop-btn').classList.add('hidden');
+                    document.getElementById('cut-stop').classList.add('hidden');
                     const reward = Math.floor(honeycombProgress / 2);
                     addCoins(reward);
                     sendResult('Сахарные соты', Math.floor(honeycombProgress), reward);
@@ -365,86 +763,78 @@
         }
         
         function stopCut() {
-            cutting = false;
-            honeycombActive = false;
-            document.getElementById('stop-btn').classList.add('hidden');
-            document.getElementById('cut-btn').classList.remove('hidden');
+            cutting = false; honeycombActive = false;
+            clearInterval(cutInterval);
+            document.getElementById('cut-stop').classList.add('hidden');
+            document.getElementById('cut-start').classList.remove('hidden');
             const finalProgress = Math.floor(honeycombProgress);
             document.getElementById('honeycomb-status').textContent = `✋ Остановлено на ${finalProgress}%`;
-            const reward = finalProgress;
-            addCoins(reward);
-            sendResult('Сахарные соты', finalProgress, reward);
+            addCoins(finalProgress);
+            sendResult('Сахарные соты', finalProgress, finalProgress);
             setTimeout(backToMenu, 2000);
         }
         
-        // Dice Game
-        function startDice() {
-            document.getElementById('menu').classList.add('hidden');
-            document.getElementById('dice-game').classList.remove('hidden');
-            document.getElementById('dice-result').textContent = '🎲';
-            document.getElementById('dice-status').textContent = '';
+        // Dice
+        function initDice() {
+            document.getElementById('dice-icon').textContent = '🎲';
+            document.getElementById('dice-status').textContent = 'Угадайте чёт или нечет!';
+            document.getElementById('dice-icon').classList.remove('shake');
         }
         
-        function bet(choice) {
+        function betDice(choice) {
             const roll = Math.floor(Math.random() * 6) + 1;
             const isEven = roll % 2 === 0;
             const won = (choice === 'even' && isEven) || (choice === 'odd' && !isEven);
-            
             const diceEmojis = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-            document.getElementById('dice-result').textContent = diceEmojis[roll];
-            
-            const betAmount = 10;
+            document.getElementById('dice-icon').textContent = diceEmojis[roll];
+            document.getElementById('dice-icon').classList.add('shake');
             
             if (won) {
-                const reward = betAmount * 2;
-                addCoins(reward);
-                document.getElementById('dice-status').textContent = `✅ Выпало ${roll} (${isEven ? 'чёт' : 'нечет'}). ВЫ ВЫИГРАЛИ +${reward}!`;
-                sendResult('Кости', roll, reward);
+                addCoins(20);
+                document.getElementById('dice-status').textContent = `✅ Выпало ${roll} — +20!`;
+                showConfetti();
+                sendResult('Кости', roll, 20);
             } else {
-                document.getElementById('dice-status').textContent = `❌ Выпало ${roll} (${isEven ? 'чёт' : 'нечет'}). ВЫ ПРОИГРАЛИ!`;
+                document.getElementById('dice-status').textContent = `❌ Выпало ${roll} — проигрыш!`;
                 sendResult('Кости', roll, 0);
             }
+            setTimeout(() => document.getElementById('dice-icon').classList.remove('shake'), 500);
         }
         
-        // Guess Game
-        function startGuess() {
-            document.getElementById('menu').classList.add('hidden');
-            document.getElementById('guess-game').classList.remove('hidden');
+        // Guess
+        function initGuess() {
             guessNumber = Math.floor(Math.random() * 100) + 1;
             guessAttempts = 0;
             document.getElementById('guess-attempts').textContent = '0';
-            document.getElementById('guess-status').textContent = '';
+            document.getElementById('guess-status').textContent = 'Я загадал число от 1 до 100';
             document.getElementById('guess-input').value = '';
         }
         
-        function guess() {
+        function makeGuess() {
             const input = document.getElementById('guess-input');
             const userGuess = parseInt(input.value);
-            
             if (!userGuess || userGuess < 1 || userGuess > 100) {
-                document.getElementById('guess-status').textContent = 'Введите число от 1 до 100!';
+                document.getElementById('guess-status').textContent = '❌ Введите число от 1 до 100!';
                 return;
             }
-            
             guessAttempts++;
             document.getElementById('guess-attempts').textContent = guessAttempts;
             
             if (userGuess === guessNumber) {
                 const reward = Math.max(100 - guessAttempts * 10, 10);
                 addCoins(reward);
-                document.getElementById('guess-status').textContent = `🎉 ПРАВИЛЬНО! Это число ${guessNumber}! +${reward} монет`;
+                document.getElementById('guess-status').textContent = `🎉 ПРАВИЛЬНО! +${reward}!`;
+                showConfetti();
                 sendResult('Угадай число', guessAttempts, reward);
                 setTimeout(backToMenu, 2000);
             } else if (guessAttempts >= 7) {
-                document.getElementById('guess-status').textContent = `💀 Игра окончена! Было загадано ${guessNumber}`;
+                document.getElementById('guess-status').textContent = `💀 ИГРА ОКОНЧЕНА! Число: ${guessNumber}`;
                 sendResult('Угадай число', guessAttempts, 0);
                 setTimeout(backToMenu, 2000);
-            } else if (userGuess < guessNumber) {
-                document.getElementById('guess-status').textContent = '📈 Больше!';
             } else {
-                document.getElementById('guess-status').textContent = '📉 Меньше!';
+                document.getElementById('guess-status').textContent = userGuess < guessNumber ? '📈 БОЛЬШЕ!' : '📉 МЕНЬШЕ!';
             }
         }
     </script>
 </body>
-  </html>
+    </html>
