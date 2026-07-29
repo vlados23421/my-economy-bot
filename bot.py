@@ -50,7 +50,7 @@ def faq_keyboard():
         types.InlineKeyboardButton("Как зайти на сервер?", callback_data="faq_join"),
         types.InlineKeyboardButton("Не заходит в игру / ошибка", callback_data="faq_crash"),
         types.InlineKeyboardButton("Как получить разбан?", callback_data="faq_unban"),
-        types.InlineKeyboardButton("Где скачать сборку?", callback_data="faq_mods"),
+        types.InlineKeyboardButton("Где скачать лаунчер?", callback_data="faq_mods"),
         types.InlineKeyboardButton("Потерял прогресс / вещи", callback_data="faq_progress"),
     )
     return markup
