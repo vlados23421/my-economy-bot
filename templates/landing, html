@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦑 Squid Game | PORTAL</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0a1a;
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            overflow-x: hidden;
+        }
+        
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            position: relative;
+            background: 
+                radial-gradient(ellipse at center, rgba(233,69,96,0.15) 0%, transparent 70%),
+                radial-gradient(ellipse at bottom, rgba(0,0,0,0.8) 0%, transparent 70%);
+        }
+        
+        .hero::before {
+            content: '○ △ □';
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 2em;
+            color: rgba(233,69,96,0.1);
+            letter-spacing: 15px;
+        }
+        
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 4em;
+            font-weight: 900;
+            letter-spacing: 8px;
+            background: linear-gradient(135deg, #e94560, #ff6b81);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: glow 2s ease-in-out infinite;
+            margin-bottom: 10px;
+        }
+        
+        @keyframes glow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.5); }
+        }
+        
+        .subtitle {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2em;
+            color: #aaa;
+            letter-spacing: 10px;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+        
+        .server-ip {
+            background: rgba(233,69,96,0.1);
+            border: 2px solid #e94560;
+            border-radius: 15px;
+            padding: 15px 30px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5em;
+            color: #ff6b81;
+            margin-bottom: 30px;
+            letter-spacing: 3px;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+        
+        .btn {
+            padding: 15px 35px;
+            border-radius: 30px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1em;
+            font-weight: bold;
+            text-decoration: none;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #e94560, #ff6b81);
+            color: white;
+            box-shadow: 0 10px 30px rgba(233,69,96,0.4);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(233,69,96,0.6);
+        }
+        
+        .btn-soon {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 35px;
+            border-radius: 30px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1em;
+            letter-spacing: 2px;
+            background: rgba(233,69,96,0.08);
+            border: 2px dashed rgba(233,69,96,0.3);
+            color: rgba(233,69,96,0.5);
+            cursor: default;
+            position: relative;
+        }
+        
+        .btn-soon-badge {
+            background: #e94560;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.65em;
+            letter-spacing: 2px;
+            animation: badgePulse 1.5s infinite;
+        }
+        
+        @keyframes badgePulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        
+        .section {
+            padding: 80px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2em;
+            text-align: center;
+            color: #e94560;
+            margin-bottom: 50px;
+            letter-spacing: 5px;
+        }
+        
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .game-card {
+            background: linear-gradient(180deg, #1e1e4a, #16213e);
+            border-radius: 20px;
+            padding: 30px 20px;
+            text-align: center;
+            border: 1px solid rgba(233,69,96,0.2);
+            transition: all 0.3s;
+        }
+        
+        .game-card:hover {
+            border-color: #e94560;
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(233,69,96,0.2);
+        }
+        
+        .game-icon { font-size: 3em; display: block; margin-bottom: 15px; }
+        .game-name { font-weight: bold; font-size: 1.1em; margin-bottom: 8px; }
+        .game-desc { font-size: 0.85em; color: #aaa; }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 50px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #1e1e4a, #2a1a3e);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            border: 1px solid rgba(233,69,96,0.2);
+        }
+        
+        .stat-number {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5em;
+            color: #ff6b81;
+            font-weight: bold;
+        }
+        
+        .stat-label {
+            font-size: 0.8em;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-top: 8px;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid rgba(233,69,96,0.1);
+            color: #666;
+            font-size: 0.8em;
+        }
+        
+        .links {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .links a {
+            color: #e94560;
+            text-decoration: none;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8em;
+            letter-spacing: 2px;
+            transition: 0.3s;
+        }
+        
+        .links a:hover { color: #ff6b81; }
+        
+        .links .link-soon {
+            color: rgba(233,69,96,0.3);
+            cursor: default;
+            text-decoration: line-through;
+        }
+        
+        @media (max-width: 600px) {
+            .logo { font-size: 2.5em; letter-spacing: 4px; }
+            .subtitle { font-size: 0.9em; letter-spacing: 5px; }
+            .server-ip { font-size: 1.1em; padding: 10px 20px; }
+            .section-title { font-size: 1.5em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <div class="logo">SQUID GAME</div>
+        <div class="subtitle">Выживает сильнейший</div>
+        <div class="server-ip">🌍 185.169.134.5:7777</div>
+        <div class="btn-group">
+            <a href="https://t.me/SquidGameBEST_bot" class="btn btn-primary">🦑 ИГРАТЬ В БОТЕ</a>
+            <div class="btn-soon">
+                <span>💬 DISCORD</span>
+                <span class="btn-soon-badge">СКОРО</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <div class="section-title">🎮 МИНИ-ИГРЫ</div>
+        <div class="games-grid">
+            <div class="game-card">
+                <span class="game-icon">🟢</span>
+                <div class="game-name">Красный свет — Зелёный свет</div>
+                <div class="game-desc">Беги на зелёный, замри на красный!</div>
+            </div>
+            <div class="game-card">
+                <span class="game-icon">🍬</span>
+                <div class="game-name">Сахарные соты</div>
+                <div class="game-desc">Вырезай фигуру, не сломав соты!</div>
+            </div>
+            <div class="game-card">
+                <span class="game-icon">🎲</span>
+                <div class="game-name">Кости</div>
+                <div class="game-desc">Угадай чёт или нечет — удвой монеты!</div>
+            </div>
+            <div class="game-card">
+                <span class="game-icon">🔢</span>
+                <div class="game-name">Угадай число</div>
+                <div class="game-desc">От 1 до 100 за 7 попыток!</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <div class="section-title">📊 СТАТИСТИКА</div>
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">500+</div>
+                <div class="stat-label">Игроков</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">10.000+</div>
+                <div class="stat-label">Игр сыграно</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">50.000+</div>
+                <div class="stat-label">Монет выдано</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <div class="links">
+            <a href="https://t.me/SquidGamePortalBot">🤖 БОТ</a>
+            <a href="https://t.me/GameSquidMy">📢 КАНАЛ</a>
+            <span class="link-soon">💬 DISCORD</span>
+            <a href="https://vk.ru/bestrussiaonlinerp">🔵 VK</a>
+        </div>
+        <p>© 2026 Squid Game | PORTAL. Все права защищены.</p>
+        <p style="margin-top:5px;">○ △ □</p>
+    </div>
+</body>
+</html>
